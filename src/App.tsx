@@ -5,6 +5,7 @@ import { AppHeader } from './components/AppHeader'
 import { BottomNavigation } from './components/BottomNavigation'
 import { DeadlineCard } from './components/DeadlineCard'
 import { EditSheet } from './components/EditSheet'
+import { TutorialSheet } from './components/TutorialSheet'
 import type { SheetMode } from './components/EditSheet'
 import {
   formatDeadline,
@@ -27,6 +28,7 @@ function App() {
   const [sheet, setSheet] = useState<SheetMode>(null)
   const [draft, setDraft] = useState('')
   const [goalDraft, setGoalDraft] = useState(goal)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
@@ -81,7 +83,7 @@ function App() {
   return (
     <main className="app-shell">
       <div className="app-content">
-        <AppHeader onEditGoal={openGoal} />
+        <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
         <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} progress={progress} onEditGoal={openGoal} />
         <ActionLists todos={todos} routines={routines} onToggle={toggleItem} onAdd={openAdd} />
       </div>
@@ -101,6 +103,7 @@ function App() {
           onClose={closeSheet}
         />
       )}
+      {tutorialOpen && <TutorialSheet onClose={() => setTutorialOpen(false)} />}
     </main>
   )
 }

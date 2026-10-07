@@ -20,16 +20,9 @@ const STORAGE_KEYS = {
   routineDay: 'deadline-routine-day',
 } as const
 
-const DEFAULT_TODOS: ListItem[] = [
-  { id: 1, title: '参考書を1章進める', completed: true },
-  { id: 2, title: '模擬問題を解く', completed: false },
-  { id: 3, title: '苦手な範囲を整理する', completed: false },
-]
+const DEFAULT_TODOS: ListItem[] = []
 
-const DEFAULT_ROUTINES: ListItem[] = [
-  { id: 1, title: '朝、30分勉強する', completed: true },
-  { id: 2, title: '寝る前に復習する', completed: false },
-]
+const DEFAULT_ROUTINES: ListItem[] = []
 
 export function toDateInputValue(date: Date) {
   const year = date.getFullYear()
@@ -40,8 +33,8 @@ export function toDateInputValue(date: Date) {
 
 function getDefaultGoal(): Goal {
   return {
-    title: '資格試験に合格する',
-    deadline: toDateInputValue(new Date(Date.now() + DAY_IN_MILLISECONDS * 53)),
+    title: '',
+    deadline: '',
   }
 }
 
@@ -88,12 +81,14 @@ export function saveItems(kind: ListKind, items: ListItem[]) {
 }
 
 export function getDaysLeft(deadline: string, todayKey: string) {
+  if (!deadline || !todayKey) return 0
   const deadlineDate = new Date(`${deadline}T00:00:00`)
   const today = new Date(`${todayKey}T00:00:00`)
   return Math.max(0, Math.round((deadlineDate.getTime() - today.getTime()) / DAY_IN_MILLISECONDS))
 }
 
 export function formatDeadline(deadline: string) {
+  if (!deadline) return ''
   return new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
     month: 'long',
