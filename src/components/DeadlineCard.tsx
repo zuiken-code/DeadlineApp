@@ -1,19 +1,29 @@
-import type { Goal } from '../data/appStorage'
-import { EditIcon } from './Icons'
+import type { Goal } from "../data/appStorage";
+import { EditIcon } from "./Icons";
 
 type DeadlineCardProps = {
-  goal: Goal
-  deadlineText: string
-  daysLeft: number
-  progress: number
-  onEditGoal: () => void
-}
+  goal: Goal;
+  deadlineText: string;
+  daysLeft: number;
+  progress: number;
+  onEditGoal: () => void;
+};
 
-export function DeadlineCard({ goal, deadlineText, daysLeft, progress, onEditGoal }: DeadlineCardProps) {
+export function DeadlineCard({
+  goal,
+  deadlineText,
+  daysLeft,
+  progress,
+  onEditGoal,
+}: DeadlineCardProps) {
   return (
     <section className="deadline-card" aria-labelledby="goal-title">
-      <button className="goal-edit" onClick={onEditGoal} aria-label="目標を編集">
-        <span>GOAL</span>
+      <button
+        className="goal-edit"
+        onClick={onEditGoal}
+        aria-label="目標を編集"
+      >
+        <span>目標</span>
         <EditIcon />
       </button>
       <h2 id="goal-title">{goal.title}</h2>
@@ -30,5 +40,5 @@ export function DeadlineCard({ goal, deadlineText, daysLeft, progress, onEditGoa
         <span>{progress}%</span>
       </div>
     </section>
-  )
+  );
 }
