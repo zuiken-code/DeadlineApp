@@ -216,6 +216,37 @@
   margin-bottom: 20px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-button {
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid rgba(38, 167, 154, .22);
+  border-radius: 999px;
+  background: var(--accent-pale);
+  color: var(--accent-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.help-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .eyebrow, .list-kicker {
   color: var(--accent-dark);
   font-size: 10px;
@@ -432,6 +463,92 @@
 }
 .primary-button:disabled { opacity: .42; cursor: default; }
 
+.tutorial-layer {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  background: rgba(10, 21, 20, .3);
+  backdrop-filter: blur(3px);
+  animation: fade-in 180ms ease both;
+}
+
+.tutorial-sheet {
+  width: min(100%, 480px);
+  max-height: min(92svh, 760px);
+  overflow-y: auto;
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -20px 60px rgba(10, 36, 33, .16);
+  animation: sheet-up 280ms cubic-bezier(.2,.85,.25,1) both;
+}
+
+.tutorial-lead {
+  margin: -8px 0 20px;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.tutorial-steps {
+  display: grid;
+  gap: 13px;
+}
+
+.tutorial-step {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 12px;
+  border-radius: 18px;
+  background: var(--grouped);
+}
+
+.tutorial-step-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--accent-pale);
+  color: var(--accent-dark);
+  display: grid;
+  place-content: center;
+}
+
+.tutorial-step-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tutorial-number {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.tutorial-step h3 {
+  margin: 2px 0 3px;
+  font-size: 15px;
+  letter-spacing: -.02em;
+}
+
+.tutorial-step p {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.tutorial-close { margin-top: 18px; }
+
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes sheet-up { from { transform: translateY(32px); opacity: .5; } }
 
@@ -439,6 +556,7 @@
   .app-shell { margin-block: 28px; min-height: calc(100svh - 56px); border-radius: 32px; overflow: hidden; }
   .bottom-nav { bottom: 28px; border-radius: 0 0 32px 32px; }
   .sheet { margin-bottom: 28px; border-radius: 28px; }
+  .tutorial-sheet { margin-bottom: 28px; border-radius: 28px; }
 }
 
 @media (max-width: 365px) {
@@ -465,5 +583,6 @@
   .sheet-layer { background: rgba(0,0,0,.55); }
   .sheet-handle { background: #4d5755; }
   .sheet input { border-color: var(--line); }
+  .help-button { border-color: rgba(81, 197, 184, .25); }
   .eyebrow, .list-kicker, .goal-edit, .count, .add-row, .progress-row, .remaining-unit, .nav-item.active { color: #51c5b8; }
 }

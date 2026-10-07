@@ -16,6 +16,8 @@ export function DeadlineCard({
   progress,
   onEditGoal,
 }: DeadlineCardProps) {
+  const hasGoal = Boolean(goal.title && goal.deadline);
+
   return (
     <section className="deadline-card" aria-labelledby="goal-title">
       <button
@@ -26,12 +28,12 @@ export function DeadlineCard({
         <span>目標</span>
         <EditIcon />
       </button>
-      <h2 id="goal-title">{goal.title}</h2>
-      <p className="deadline-date">{deadlineText}まで</p>
+      <h2 id="goal-title">{hasGoal ? goal.title : 'まずは目標を設定しましょう'}</h2>
+      <p className="deadline-date">{hasGoal ? `${deadlineText}まで` : '目標と期限を入力するとカウントダウンが始まります'}</p>
       <div className="remaining">
         <span className="remaining-label">残り</span>
-        <strong>{daysLeft}</strong>
-        <span className="remaining-unit">日</span>
+        <strong>{hasGoal ? daysLeft : '—'}</strong>
+        {hasGoal && <span className="remaining-unit">日</span>}
       </div>
       <div className="progress-row">
         <div className="progress-track" aria-label={`TODOの進捗 ${progress}%`}>

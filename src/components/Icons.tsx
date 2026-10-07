@@ -25,3 +25,7 @@ export function HomeIcon({ className }: IconProps) {
 export function GoalIcon({ className }: IconProps) {
   return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M5 5h11l-2 3 2 3H5" /></svg>
 }
+
+export function HelpIcon({ className }: IconProps) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M9.6 9.3a2.5 2.5 0 1 1 4 2c-.9.7-1.6 1.1-1.6 2.3M12 16.7h.01" /></svg>
+}
