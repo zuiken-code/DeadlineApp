@@ -1,0 +1,102 @@
+export type Goal = {
+  title: string
+  deadline: string
+}
+
+export type ListItem = {
+  id: number
+  title: string
+  completed: boolean
+}
+
+export type ListKind = 'todo' | 'routine'
+
+const DAY_IN_MILLISECONDS = 1000 * 60 * 60 * 24
+
+const STORAGE_KEYS = {
+  goal: 'deadline-goal',
+  todos: 'deadline-todos',
+  routines: 'deadline-routines',
+  routineDay: 'deadline-routine-day',
+} as const
+
+const DEFAULT_TODOS: ListItem[] = [
+  { id: 1, title: '参考書を1章進める', completed: true },
+  { id: 2, title: '模擬問題を解く', completed: false },
+  { id: 3, title: '苦手な範囲を整理する', completed: false },
+]
+
+const DEFAULT_ROUTINES: ListItem[] = [
+  { id: 1, title: '朝、30分勉強する', completed: true },
+  { id: 2, title: '寝る前に復習する', completed: false },
+]
+
+export function toDateInputValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getDefaultGoal(): Goal {
+  return {
+    title: '資格試験に合格する',
+    deadline: toDateInputValue(new Date(Date.now() + DAY_IN_MILLISECONDS * 53)),
+  }
+}
+
+function readStorage<T>(key: string, fallback: T): T {
+  try {
+    const value = localStorage.getItem(key)
+    return value ? (JSON.parse(value) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function writeStorage<T>(key: string, value: T) {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+
+export function loadGoal() {
+  return readStorage<Goal>(STORAGE_KEYS.goal, getDefaultGoal())
+}
+
+export function saveGoal(goal: Goal) {
+  writeStorage(STORAGE_KEYS.goal, goal)
+}
+
+export function loadTodos() {
+  return readStorage<ListItem[]>(STORAGE_KEYS.todos, DEFAULT_TODOS)
+}
+
+export function loadRoutines(todayKey: string) {
+  const stored = readStorage<ListItem[]>(STORAGE_KEYS.routines, DEFAULT_ROUTINES)
+  const lastDay = localStorage.getItem(STORAGE_KEYS.routineDay)
+  const routines = lastDay && lastDay !== todayKey
+    ? stored.map((item) => ({ ...item, completed: false }))
+    : stored
+
+  localStorage.setItem(STORAGE_KEYS.routineDay, todayKey)
+  writeStorage(STORAGE_KEYS.routines, routines)
+
+  return routines
+}
+
+export function saveItems(kind: ListKind, items: ListItem[]) {
+  writeStorage(kind === 'todo' ? STORAGE_KEYS.todos : STORAGE_KEYS.routines, items)
+}
+
+export function getDaysLeft(deadline: string, todayKey: string) {
+  const deadlineDate = new Date(`${deadline}T00:00:00`)
+  const today = new Date(`${todayKey}T00:00:00`)
+  return Math.max(0, Math.round((deadlineDate.getTime() - today.getTime()) / DAY_IN_MILLISECONDS))
+}
+
+export function formatDeadline(deadline: string) {
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(`${deadline}T00:00:00`))
+}
