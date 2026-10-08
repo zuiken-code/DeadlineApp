@@ -589,11 +589,10 @@
   .bottom-nav { bottom: 28px; border-radius: 0 0 32px 32px; }
   .sheet { margin-bottom: 28px; border-radius: 28px; }
   .tutorial-sheet { margin-bottom: 28px; border-radius: 28px; }
-  .lists { grid-template-columns: minmax(0, 1fr) minmax(180px, .42fr); gap: 28px; align-items: start; }
-  .progress-card { padding: 0 0 20px 28px; border-top: 0; border-left: 1px solid var(--line); }
+  .lists { grid-template-columns: minmax(0, 1fr); gap: 0; align-items: start; }
   .swipe-item { display: flex; background: transparent; }
-  .swipe-item .list-item { width: calc(100% - 52px); transform: none !important; }
-  .desktop-delete-action { width: 52px; display: grid; place-items: center; border: 0; background: transparent; color: #d94b4b; cursor: pointer; }
+  .swipe-item .list-item { order: 1; width: calc(100% - 52px); transform: none !important; }
+  .desktop-delete-action { order: 2; width: 52px; display: grid; place-items: center; border: 0; background: transparent; color: #d94b4b; cursor: pointer; }
   .desktop-delete-action svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .delete-action { display: none; }
 }
