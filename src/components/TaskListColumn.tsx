@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ListItem, ListKind } from '../data/appStorage';
-import { CheckIcon, PlusIcon } from './Icons';
+import { CheckIcon, PlusIcon, TrashIcon } from './Icons';
 
 type TaskListColumnProps = {
   kind: ListKind;
@@ -83,12 +83,16 @@ function SwipeableListItem({ item, kind, onToggle, onDelete }: SwipeableListItem
     if (startX.current === null) return;
     const deltaX = event.clientX - startX.current;
     startX.current = null;
-    if (Math.abs(deltaX) > 48) setIsOpen(true);
+    if (deltaX > 48) setIsOpen(true);
+    if (deltaX < -48) setIsOpen(false);
   };
 
   return (
     <div className={`swipe-item ${isOpen ? 'is-open' : ''}`}>
-      {onDelete && <button type="button" className="delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}>削除</button>}
+      {onDelete && <>
+        <button type="button" className="delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}>削除</button>
+        <button type="button" className="desktop-delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}><TrashIcon /></button>
+      </>}
       <button type="button" className={`list-item ${item.completed ? 'is-complete' : ''}`} onClick={() => (isOpen ? setIsOpen(false) : onToggle(kind, item.id))} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} aria-pressed={item.completed}>
         <span className="checkbox"><CheckIcon /></span>
         <span>{item.title}</span>

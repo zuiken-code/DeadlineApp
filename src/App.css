@@ -347,6 +347,7 @@
 .remaining-label { color: var(--secondary); font-size: 14px; margin: 0 8px 23px 0; }
 .remaining strong { font-size: clamp(76px, 23vw, 104px); line-height: .91; font-weight: 750; letter-spacing: -.075em; }
 .remaining-unit { color: var(--accent-dark); font-size: 23px; font-weight: 700; margin: 0 0 10px 9px; }
+.holiday-count { margin: 3px 0 0; color: var(--secondary); font-size: 11px; font-weight: 600; }
 
 .progress-row {
   display: flex; align-items: center; gap: 12px;
@@ -378,6 +379,7 @@
 .swipe-item .list-item { position: relative; z-index: 1; border-bottom: 0; background: var(--surface); transition: transform 180ms ease; }
 .swipe-item.is-open .list-item { transform: translateX(76px); }
 .delete-action { position: absolute; inset: 0 auto 0 0; width: 76px; border: 0; padding: 0; background: #d94b4b; color: white; font-size: 12px; font-weight: 750; cursor: pointer; }
+.desktop-delete-action { display: none; }
 .list-item {
   width: 100%; min-height: 68px; padding: 10px 0; border: 0;
   border-bottom: 1px solid var(--line); background: transparent; color: var(--ink);
@@ -560,6 +562,11 @@
   .bottom-nav { bottom: 28px; border-radius: 0 0 32px 32px; }
   .sheet { margin-bottom: 28px; border-radius: 28px; }
   .tutorial-sheet { margin-bottom: 28px; border-radius: 28px; }
+  .swipe-item { display: flex; background: transparent; }
+  .swipe-item .list-item { width: calc(100% - 52px); transform: none !important; }
+  .desktop-delete-action { width: 52px; display: grid; place-items: center; border: 0; background: transparent; color: #d94b4b; cursor: pointer; }
+  .desktop-delete-action svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .delete-action { display: none; }
 }
 
 @media (max-width: 365px) {

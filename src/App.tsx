@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ActionLists } from './components/ActionLists'
 import { AppHeader } from './components/AppHeader'
@@ -17,6 +17,7 @@ import {
   toDateInputValue,
 } from './data/appStorage'
 import type { ListItem, ListKind } from './data/appStorage'
+import { getHolidayCount } from './data/holidayApi'
 import './App.css'
 
 function App() {
@@ -27,11 +28,27 @@ function App() {
   const [draft, setDraft] = useState('')
   const [goalDraft, setGoalDraft] = useState(goal)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [holidayCount, setHolidayCount] = useState(0)
+  const [holidayAvailable, setHolidayAvailable] = useState(true)
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
   const completedTodos = todos.filter((item) => item.completed).length
   const progress = todos.length ? Math.round((completedTodos / todos.length) * 100) : 0
+
+  useEffect(() => {
+    let cancelled = false
+    if (!goal.deadline) {
+      return () => { cancelled = true }
+    }
+    getHolidayCount(todayKey, goal.deadline).then((result) => {
+      if (!cancelled) {
+        setHolidayCount(result.count)
+        setHolidayAvailable(result.available)
+      }
+    })
+    return () => { cancelled = true }
+  }, [goal.deadline, todayKey])
 
   const updateItems = (kind: ListKind, update: (items: ListItem[]) => ListItem[]) => {
     if (kind !== 'todo') return
@@ -87,7 +104,7 @@ function App() {
     <main className="app-shell">
       <div className="app-content">
         <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
-        <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} progress={progress} onEditGoal={openGoal} />
+        <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} progress={progress} onEditGoal={openGoal} />
         <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} />
       </div>
 
