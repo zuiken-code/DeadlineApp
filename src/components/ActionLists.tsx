@@ -6,13 +6,12 @@ type ActionListsProps = {
   onToggle: (kind: ListKind, id: number) => void
   onAdd: (kind: ListKind) => void
   onDelete: (kind: ListKind, id: number) => void
-  onProgressChange: (id: number, value: number) => void
 }
 
-export function ActionLists({ todos, onToggle, onAdd, onDelete, onProgressChange }: ActionListsProps) {
+export function ActionLists({ todos, onToggle, onAdd, onDelete }: ActionListsProps) {
   return (
     <section className="lists" aria-label="期限までの行動">
-      <TaskListColumn kind="todo" items={todos} onToggle={onToggle} onAdd={onAdd} onDelete={onDelete} onProgressChange={onProgressChange} />
+      <TaskListColumn kind="todo" items={todos} onToggle={onToggle} onAdd={onAdd} onDelete={onDelete} />
     </section>
   )
 }

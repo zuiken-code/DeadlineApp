@@ -7,7 +7,6 @@ export type ListItem = {
   id: number
   title: string
   completed: boolean
-  progress: number
 }
 
 export type ListKind = 'todo' | 'routine'
@@ -53,11 +52,7 @@ function writeStorage<T>(key: string, value: T) {
 }
 
 export function loadGoal() {
-  const goal = readStorage<Partial<Goal>>(STORAGE_KEYS.goal, getDefaultGoal())
-  return {
-    title: goal.title ?? '',
-    deadline: goal.deadline ?? '',
-  }
+  return readStorage<Goal>(STORAGE_KEYS.goal, getDefaultGoal())
 }
 
 export function saveGoal(goal: Goal) {
@@ -65,12 +60,7 @@ export function saveGoal(goal: Goal) {
 }
 
 export function loadTodos() {
-  return readStorage<Partial<ListItem>[]>(STORAGE_KEYS.todos, DEFAULT_TODOS).map((item) => ({
-    id: item.id ?? Date.now(),
-    title: item.title ?? '',
-    completed: item.completed ?? false,
-    progress: Math.min(4, Math.max(0, Number.isFinite(item.progress) ? item.progress as number : 0)),
-  }))
+  return readStorage<ListItem[]>(STORAGE_KEYS.todos, DEFAULT_TODOS)
 }
 
 export function loadRoutines(todayKey: string) {
