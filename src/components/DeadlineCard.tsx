@@ -1,5 +1,6 @@
 import type { Goal } from "../data/appStorage";
 import { EditIcon } from "./Icons";
+import { ProgressSlider } from './ProgressSlider';
 
 type DeadlineCardProps = {
   goal: Goal;
@@ -7,8 +8,8 @@ type DeadlineCardProps = {
   daysLeft: number;
   holidayCount: number;
   holidayAvailable: boolean;
-  progress: number;
   onEditGoal: () => void;
+  onProgressChange: (value: number) => void;
 };
 
 export function DeadlineCard({
@@ -17,8 +18,8 @@ export function DeadlineCard({
   daysLeft,
   holidayCount,
   holidayAvailable,
-  progress,
   onEditGoal,
+  onProgressChange,
 }: DeadlineCardProps) {
   const hasGoal = Boolean(goal.title && goal.deadline);
 
@@ -40,12 +41,7 @@ export function DeadlineCard({
         {hasGoal && <span className="remaining-unit">日</span>}
       </div>
       {hasGoal && <p className="holiday-count">{holidayAvailable ? `休日 ${holidayCount}日` : '休日データ未取得'}</p>}
-      <div className="progress-row">
-        <div className="progress-track" aria-label={`TODOの進捗 ${progress}%`}>
-          <span style={{ width: `${progress}%` }} />
-        </div>
-        <span>{progress}%</span>
-      </div>
+      {hasGoal && <ProgressSlider value={goal.progress} onChange={onProgressChange} id="goal-progress" ariaLabel="目標の達成度を5段階で選択" />}
     </section>
   );
 }
