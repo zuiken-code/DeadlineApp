@@ -33,8 +33,14 @@ function App() {
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
-  const completedTodos = todos.filter((item) => item.completed).length
-  const progress = todos.length ? Math.round((completedTodos / todos.length) * 100) : 0
+  const updateItemProgress = (id: number, value: number) => {
+    updateItems('todo', (items) => items.map((item) => item.id === id ? { ...item, progress: value } : item))
+  }
+
+  const goalProgress = useMemo(() => {
+    if (!todos.length) return 0
+    return Math.round(todos.reduce((total, item) => total + item.progress, 0) / todos.length * 25)
+  }, [todos])
 
   useEffect(() => {
     let cancelled = false
@@ -86,7 +92,7 @@ function App() {
     event.preventDefault()
     const title = draft.trim()
     if (!title || sheet !== 'todo') return
-    updateItems(sheet, (items) => [...items, { id: Date.now(), title, completed: false }])
+    updateItems(sheet, (items) => [...items, { id: Date.now(), title, completed: false, progress: 0 }])
     closeSheet()
     setDraft('')
   }
@@ -104,8 +110,8 @@ function App() {
     <main className="app-shell">
       <div className="app-content">
         <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
-        <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} progress={progress} onEditGoal={openGoal} />
-        <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} />
+        <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} goalProgress={goalProgress} onEditGoal={openGoal} />
+        <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} onProgressChange={updateItemProgress} />
       </div>
 
       <BottomNavigation onEditGoal={openGoal} />
