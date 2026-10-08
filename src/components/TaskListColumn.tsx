@@ -44,12 +44,13 @@ export function TaskListColumn({
       className={`list-column ${kind === "todo" ? "todo-column" : "routine-column"}`}
     >
       <div className="list-heading">
-        <div>
+        <div className="list-heading-task">
           <h3>{labels.heading}</h3>
+          <span className="count">
+            {completedCount}/{items.length}
+          </span>
         </div>
-        <span className="count">
-          {completedCount}/{items.length}
-        </span>
+        <span className="list-heading-progress">達成率</span>
       </div>
       <div className="items">
         {items.length === 0 && <p className="empty">{labels.empty}</p>}
