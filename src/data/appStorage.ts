@@ -1,7 +1,6 @@
 export type Goal = {
   title: string
   deadline: string
-  progress: number
 }
 
 export type ListItem = {
@@ -37,7 +36,6 @@ function getDefaultGoal(): Goal {
   return {
     title: '',
     deadline: '',
-    progress: 0,
   }
 }
 
@@ -59,7 +57,6 @@ export function loadGoal() {
   return {
     title: goal.title ?? '',
     deadline: goal.deadline ?? '',
-    progress: Math.min(4, Math.max(0, Number.isFinite(goal.progress) ? goal.progress as number : 0)),
   }
 }
 

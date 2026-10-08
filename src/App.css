@@ -354,6 +354,9 @@
   color: var(--accent-dark); font-size: 12px; font-weight: 700;
   font-variant-numeric: tabular-nums; position: relative; z-index: 1;
 }
+.goal-progress-summary { margin-top: 14px; position: relative; z-index: 1; }
+.goal-progress-header { display: flex; align-items: center; justify-content: space-between; color: var(--secondary); font-size: 11px; font-weight: 650; }
+.goal-progress-header strong { color: var(--accent-dark); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 .progress-track { flex: 1; height: 6px; background: rgba(38, 167, 154, .14); border-radius: 999px; overflow: hidden; }
 .progress-track span { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width 260ms ease; }
