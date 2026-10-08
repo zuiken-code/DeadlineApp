@@ -49,6 +49,7 @@ export default defineConfig(({ command }) => ({
         skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,svg,png}'],
       },
+      devOptions: { enabled: false },
     }),
   ],
 }))

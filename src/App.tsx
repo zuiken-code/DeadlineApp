@@ -11,7 +11,6 @@ import {
   formatDeadline,
   getDaysLeft,
   loadGoal,
-  loadRoutines,
   loadTodos,
   saveGoal,
   saveItems,
@@ -24,7 +23,6 @@ function App() {
   const [todayKey] = useState(() => toDateInputValue(new Date()))
   const [goal, setGoal] = useState(loadGoal)
   const [todos, setTodos] = useState(loadTodos)
-  const [routines, setRoutines] = useState(() => loadRoutines(todayKey))
   const [sheet, setSheet] = useState<SheetMode>(null)
   const [draft, setDraft] = useState('')
   const [goalDraft, setGoalDraft] = useState(goal)
@@ -36,7 +34,8 @@ function App() {
   const progress = todos.length ? Math.round((completedTodos / todos.length) * 100) : 0
 
   const updateItems = (kind: ListKind, update: (items: ListItem[]) => ListItem[]) => {
-    const setter = kind === 'todo' ? setTodos : setRoutines
+    if (kind !== 'todo') return
+    const setter = setTodos
     setter((current) => {
       const next = update(current)
       saveItems(kind, next)
@@ -48,6 +47,10 @@ function App() {
     updateItems(kind, (items) => items.map((item) => (
       item.id === id ? { ...item, completed: !item.completed } : item
     )))
+  }
+
+  const deleteItem = (kind: ListKind, id: number) => {
+    updateItems(kind, (items) => items.filter((item) => item.id !== id))
   }
 
   const openAdd = (kind: ListKind) => {
@@ -65,7 +68,7 @@ function App() {
   const addItem = (event: FormEvent) => {
     event.preventDefault()
     const title = draft.trim()
-    if (!title || (sheet !== 'todo' && sheet !== 'routine')) return
+    if (!title || sheet !== 'todo') return
     updateItems(sheet, (items) => [...items, { id: Date.now(), title, completed: false }])
     closeSheet()
     setDraft('')
@@ -85,7 +88,7 @@ function App() {
       <div className="app-content">
         <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
         <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} progress={progress} onEditGoal={openGoal} />
-        <ActionLists todos={todos} routines={routines} onToggle={toggleItem} onAdd={openAdd} />
+        <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} />
       </div>
 
       <BottomNavigation onEditGoal={openGoal} />
