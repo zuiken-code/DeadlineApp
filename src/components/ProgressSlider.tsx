@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 type ProgressSliderProps = {
   value: number
   onChange: (value: number) => void
@@ -16,7 +18,7 @@ export function ProgressSlider({ value, onChange, id, ariaLabel, compact = false
       {compact && <span className="progress-value">{percentage}%</span>}
       <label className="progress-slider-label" htmlFor={id}>
         <span className="sr-only">{ariaLabel}</span>
-        <input id={id} type="range" min="0" max="4" step="1" value={value} onChange={(event) => onChange(Number(event.target.value))} aria-valuetext={`${percentage}%、${labels[value]}`} />
+        <input id={id} type="range" min="0" max="4" step="1" value={value} onChange={(event) => onChange(Number(event.target.value))} aria-valuetext={`${percentage}%、${labels[value]}`} style={{ '--progress': `${percentage}%` } as CSSProperties} />
         <span className="progress-ticks" aria-hidden="true">
           {labels.map((label, index) => <span key={label} className={index <= value ? 'is-filled' : ''}>{index === value ? label : ''}</span>)}
         </span>
