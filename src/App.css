@@ -357,10 +357,9 @@
 .progress-track { flex: 1; height: 6px; background: rgba(38, 167, 154, .14); border-radius: 999px; overflow: hidden; }
 .progress-track span { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width 260ms ease; }
 
-.lists { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; margin-top: 30px; }
+.lists { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 30px; }
 .list-column { min-width: 0; display: flex; flex-direction: column; }
-.todo-column { padding-right: 15px; border-right: 1px solid var(--line); }
-.routine-column { padding-left: 15px; }
+.todo-column { width: 100%; }
 
 .list-heading {
   min-height: 58px; display: flex; align-items: flex-start;
@@ -375,6 +374,10 @@
 }
 
 .items { flex: 1; }
+.swipe-item { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); background: #d94b4b; }
+.swipe-item .list-item { position: relative; z-index: 1; border-bottom: 0; background: var(--surface); transition: transform 180ms ease; }
+.swipe-item.is-open .list-item { transform: translateX(76px); }
+.delete-action { position: absolute; inset: 0 auto 0 0; width: 76px; border: 0; padding: 0; background: #d94b4b; color: white; font-size: 12px; font-weight: 750; cursor: pointer; }
 .list-item {
   width: 100%; min-height: 68px; padding: 10px 0; border: 0;
   border-bottom: 1px solid var(--line); background: transparent; color: var(--ink);
@@ -562,8 +565,6 @@
 @media (max-width: 365px) {
   .app-content { padding-inline: 15px; }
   .deadline-card { padding-inline: 19px; }
-  .todo-column { padding-right: 11px; }
-  .routine-column { padding-left: 11px; }
   .list-item { font-size: 12px; gap: 7px; }
   .list-heading h3 { font-size: 14px; }
   .list-kicker { font-size: 8px; }
