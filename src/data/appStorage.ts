@@ -1,6 +1,7 @@
 export type Goal = {
   title: string
   deadline: string
+  progress: number
 }
 
 export type ListItem = {
@@ -35,6 +36,7 @@ function getDefaultGoal(): Goal {
   return {
     title: '',
     deadline: '',
+    progress: 0,
   }
 }
 
@@ -52,7 +54,12 @@ function writeStorage<T>(key: string, value: T) {
 }
 
 export function loadGoal() {
-  return readStorage<Goal>(STORAGE_KEYS.goal, getDefaultGoal())
+  const goal = readStorage<Partial<Goal>>(STORAGE_KEYS.goal, getDefaultGoal())
+  return {
+    title: goal.title ?? '',
+    deadline: goal.deadline ?? '',
+    progress: Math.min(4, Math.max(0, Number.isFinite(goal.progress) ? goal.progress as number : 0)),
+  }
 }
 
 export function saveGoal(goal: Goal) {

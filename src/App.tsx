@@ -36,6 +36,12 @@ function App() {
   const completedTodos = todos.filter((item) => item.completed).length
   const progress = todos.length ? Math.round((completedTodos / todos.length) * 100) : 0
 
+  const updateProgress = (value: number) => {
+    const next = { ...goal, progress: value }
+    setGoal(next)
+    saveGoal(next)
+  }
+
   useEffect(() => {
     let cancelled = false
     if (!goal.deadline) {
@@ -105,7 +111,7 @@ function App() {
       <div className="app-content">
         <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
         <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} progress={progress} onEditGoal={openGoal} />
-        <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} />
+        <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} progress={goal.progress} onProgressChange={updateProgress} hasGoal={Boolean(goal.title && goal.deadline)} />
       </div>
 
       <BottomNavigation onEditGoal={openGoal} />
