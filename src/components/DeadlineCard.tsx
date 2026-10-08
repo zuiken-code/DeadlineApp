@@ -5,6 +5,8 @@ type DeadlineCardProps = {
   goal: Goal;
   deadlineText: string;
   daysLeft: number;
+  holidayCount: number;
+  holidayAvailable: boolean;
   progress: number;
   onEditGoal: () => void;
 };
@@ -13,6 +15,8 @@ export function DeadlineCard({
   goal,
   deadlineText,
   daysLeft,
+  holidayCount,
+  holidayAvailable,
   progress,
   onEditGoal,
 }: DeadlineCardProps) {
@@ -35,6 +39,7 @@ export function DeadlineCard({
         <strong>{hasGoal ? daysLeft : '—'}</strong>
         {hasGoal && <span className="remaining-unit">日</span>}
       </div>
+      {hasGoal && <p className="holiday-count">{holidayAvailable ? `休日 ${holidayCount}日` : '休日データ未取得'}</p>}
       <div className="progress-row">
         <div className="progress-track" aria-label={`TODOの進捗 ${progress}%`}>
           <span style={{ width: `${progress}%` }} />
