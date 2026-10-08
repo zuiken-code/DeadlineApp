@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ListItem, ListKind } from '../data/appStorage';
 import { CheckIcon, PlusIcon, TrashIcon } from './Icons';
-import { ProgressSlider } from './ProgressSlider';
 
 type TaskListColumnProps = {
   kind: ListKind;
@@ -10,7 +9,6 @@ type TaskListColumnProps = {
   onToggle: (kind: ListKind, id: number) => void;
   onAdd: (kind: ListKind) => void;
   onDelete?: (kind: ListKind, id: number) => void;
-  onProgressChange: (id: number, value: number) => void;
 };
 
 const content = {
@@ -34,7 +32,6 @@ export function TaskListColumn({
   onToggle,
   onAdd,
   onDelete,
-  onProgressChange,
 }: TaskListColumnProps) {
   const labels = content[kind];
   const completedCount = items.filter((item) => item.completed).length;
@@ -44,18 +41,17 @@ export function TaskListColumn({
       className={`list-column ${kind === "todo" ? "todo-column" : "routine-column"}`}
     >
       <div className="list-heading">
-        <div className="list-heading-task">
+        <div>
           <h3>{labels.heading}</h3>
-          <span className="count">
-            {completedCount}/{items.length}
-          </span>
         </div>
-        <span className="list-heading-progress">達成率</span>
+        <span className="count">
+          {completedCount}/{items.length}
+        </span>
       </div>
       <div className="items">
         {items.length === 0 && <p className="empty">{labels.empty}</p>}
         {items.map((item) => (
-          <SwipeableListItem key={item.id} item={item} kind={kind} onToggle={onToggle} onDelete={onDelete} onProgressChange={onProgressChange} />
+          <SwipeableListItem key={item.id} item={item} kind={kind} onToggle={onToggle} onDelete={onDelete} />
         ))}
       </div>
       <button className="add-row" onClick={() => onAdd(kind)}>
@@ -71,22 +67,19 @@ type SwipeableListItemProps = {
   kind: ListKind;
   onToggle: (kind: ListKind, id: number) => void;
   onDelete?: (kind: ListKind, id: number) => void;
-  onProgressChange: (id: number, value: number) => void;
 };
 
-function SwipeableListItem({ item, kind, onToggle, onDelete, onProgressChange }: SwipeableListItemProps) {
+function SwipeableListItem({ item, kind, onToggle, onDelete }: SwipeableListItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const startX = useRef<number | null>(null);
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.target instanceof HTMLInputElement) return;
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     startX.current = event.clientX;
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.target instanceof HTMLInputElement) return;
+  const handlePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (startX.current === null) return;
     const deltaX = event.clientX - startX.current;
     startX.current = null;
@@ -100,13 +93,10 @@ function SwipeableListItem({ item, kind, onToggle, onDelete, onProgressChange }:
         <button type="button" className="delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}>削除</button>
         <button type="button" className="desktop-delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}><TrashIcon /></button>
       </>}
-      <div className={`list-item ${item.completed ? 'is-complete' : ''}`} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
-        <button type="button" className="task-toggle" onClick={() => (isOpen ? setIsOpen(false) : onToggle(kind, item.id))} aria-pressed={item.completed}>
-          <span className="checkbox"><CheckIcon /></span>
-          <span>{item.title}</span>
-        </button>
-        <ProgressSlider compact value={item.progress} onChange={(value) => onProgressChange(item.id, value)} id={`todo-progress-${item.id}`} ariaLabel={`${item.title}の達成度を5段階で選択`} />
-      </div>
+      <button type="button" className={`list-item ${item.completed ? 'is-complete' : ''}`} onClick={() => (isOpen ? setIsOpen(false) : onToggle(kind, item.id))} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} aria-pressed={item.completed}>
+        <span className="checkbox"><CheckIcon /></span>
+        <span>{item.title}</span>
+      </button>
     </div>
   );
 }
