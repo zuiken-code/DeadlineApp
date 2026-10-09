@@ -77,12 +77,23 @@ type SwipeableListItemProps = {
 function SwipeableListItem({ item, kind, onToggle, onDelete, onProgressChange }: SwipeableListItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const startX = useRef<number | null>(null);
+  const suppressClick = useRef(false);
+
+  const markSwipe = () => {
+    suppressClick.current = true;
+    window.setTimeout(() => { suppressClick.current = false; }, 400);
+  };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target instanceof HTMLInputElement) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
+    suppressClick.current = false;
     startX.current = event.clientX;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some Android WebViews can release the pointer before capture completes.
+    }
   };
 
   const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -90,8 +101,30 @@ function SwipeableListItem({ item, kind, onToggle, onDelete, onProgressChange }:
     if (startX.current === null) return;
     const deltaX = event.clientX - startX.current;
     startX.current = null;
-    if (deltaX > 48) setIsOpen(true);
-    if (deltaX < -48) setIsOpen(false);
+    if (deltaX > 48) {
+      markSwipe();
+      setIsOpen(true);
+    }
+    if (deltaX < -48) {
+      markSwipe();
+      setIsOpen(false);
+    }
+  };
+
+  const handlePointerCancel = () => {
+    startX.current = null;
+  };
+
+  const handleTaskClick = () => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+    onToggle(kind, item.id);
   };
 
   return (
@@ -100,8 +133,8 @@ function SwipeableListItem({ item, kind, onToggle, onDelete, onProgressChange }:
         <button type="button" className="delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}>削除</button>
         <button type="button" className="desktop-delete-action" onClick={() => onDelete(kind, item.id)} aria-label={`${item.title}を削除`}><TrashIcon /></button>
       </>}
-      <div className={`list-item ${item.completed ? 'is-complete' : ''}`} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
-        <button type="button" className="task-toggle" onClick={() => (isOpen ? setIsOpen(false) : onToggle(kind, item.id))} aria-pressed={item.completed}>
+      <div className={`list-item ${item.completed ? 'is-complete' : ''}`} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerCancel={handlePointerCancel}>
+        <button type="button" className="task-toggle" onClick={handleTaskClick} aria-pressed={item.completed}>
           <span className="checkbox"><CheckIcon /></span>
           <span>{item.title}</span>
         </button>

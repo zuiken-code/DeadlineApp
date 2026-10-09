@@ -49,7 +49,11 @@ function readStorage<T>(key: string, fallback: T): T {
 }
 
 function writeStorage<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Storage can be unavailable in private mode or after the quota is reached.
+  }
 }
 
 export function loadGoal() {
@@ -75,12 +79,13 @@ export function loadTodos() {
 
 export function loadRoutines(todayKey: string) {
   const stored = readStorage<ListItem[]>(STORAGE_KEYS.routines, DEFAULT_ROUTINES)
-  const lastDay = localStorage.getItem(STORAGE_KEYS.routineDay)
+  let lastDay: string | null = null
+  try { lastDay = localStorage.getItem(STORAGE_KEYS.routineDay) } catch { /* optional storage */ }
   const routines = lastDay && lastDay !== todayKey
     ? stored.map((item) => ({ ...item, completed: false }))
     : stored
 
-  localStorage.setItem(STORAGE_KEYS.routineDay, todayKey)
+  try { localStorage.setItem(STORAGE_KEYS.routineDay, todayKey) } catch { /* optional storage */ }
   writeStorage(STORAGE_KEYS.routines, routines)
 
   return routines

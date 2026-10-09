@@ -413,7 +413,7 @@
   width: 100%; min-height: 78px; padding: 8px 0; border: 0;
   border-bottom: 1px solid var(--line); background: transparent; color: var(--ink);
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 0; text-align: left;
-  font-size: 13px; line-height: 1.45; cursor: pointer;
+  font-size: 13px; line-height: 1.45; cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
 .task-toggle { width: 100%; min-height: 38px; padding: 0; border: 0; background: transparent; color: inherit; display: flex; align-items: center; gap: 9px; text-align: left; font: inherit; cursor: pointer; }
 
