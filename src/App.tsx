@@ -6,6 +6,7 @@ import { BottomNavigation } from './components/BottomNavigation'
 import { DeadlineCard } from './components/DeadlineCard'
 import { EditSheet } from './components/EditSheet'
 import { TutorialSheet } from './components/TutorialSheet'
+import { GuidedTutorial } from './components/GuidedTutorial'
 import type { SheetMode } from './components/EditSheet'
 import {
   formatDeadline,
@@ -28,6 +29,7 @@ function App() {
   const [draft, setDraft] = useState('')
   const [goalDraft, setGoalDraft] = useState(goal)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [guidedTutorialOpen, setGuidedTutorialOpen] = useState(false)
   const [holidayCount, setHolidayCount] = useState(0)
   const [holidayAvailable, setHolidayAvailable] = useState(true)
 
@@ -129,7 +131,16 @@ function App() {
           onClose={closeSheet}
         />
       )}
-      {tutorialOpen && <TutorialSheet onClose={() => setTutorialOpen(false)} />}
+      {tutorialOpen && (
+        <TutorialSheet
+          onClose={() => setTutorialOpen(false)}
+          onStartGuide={() => {
+            setTutorialOpen(false)
+            setGuidedTutorialOpen(true)
+          }}
+        />
+      )}
+      {guidedTutorialOpen && <GuidedTutorial onClose={() => setGuidedTutorialOpen(false)} />}
     </main>
   )
 }

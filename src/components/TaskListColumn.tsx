@@ -50,7 +50,7 @@ export function TaskListColumn({
             {completedCount}/{items.length}
           </span>
         </div>
-        <span className="list-heading-progress">達成率</span>
+        <span className="list-heading-progress" data-tour="progress">達成率</span>
       </div>
       <div className="items">
         {items.length === 0 && <p className="empty">{labels.empty}</p>}
@@ -58,7 +58,7 @@ export function TaskListColumn({
           <SwipeableListItem key={item.id} item={item} kind={kind} onToggle={onToggle} onDelete={onDelete} onProgressChange={onProgressChange} />
         ))}
       </div>
-      <button className="add-row" onClick={() => onAdd(kind)}>
+      <button className="add-row" data-tour="todo-add" onClick={() => onAdd(kind)}>
         <PlusIcon />
         {labels.add}
       </button>

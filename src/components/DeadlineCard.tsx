@@ -26,6 +26,7 @@ export function DeadlineCard({
     <section className="deadline-card" aria-labelledby="goal-title">
       <button
         className="goal-edit"
+        data-tour="goal"
         onClick={onEditGoal}
         aria-label="目標を編集"
       >

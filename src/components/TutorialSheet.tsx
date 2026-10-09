@@ -2,6 +2,7 @@ import { CloseIcon, GoalIcon, HelpIcon, PlusIcon } from './Icons';
 
 type TutorialSheetProps = {
   onClose: () => void;
+  onStartGuide: () => void;
 };
 
 const steps = [
@@ -37,7 +38,7 @@ const steps = [
   },
 ] as const;
 
-export function TutorialSheet({ onClose }: TutorialSheetProps) {
+export function TutorialSheet({ onClose, onStartGuide }: TutorialSheetProps) {
   return (
     <div className="tutorial-layer" role="presentation" onMouseDown={onClose}>
       <section className="tutorial-sheet" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -62,7 +63,10 @@ export function TutorialSheet({ onClose }: TutorialSheetProps) {
             </article>
           ))}
         </div>
-        <button className="primary-button tutorial-close" onClick={onClose}>はじめる</button>
+        <div className="tutorial-actions">
+          <button className="secondary-button" onClick={onStartGuide}>チュートリアルを開始</button>
+          <button className="primary-button tutorial-close" onClick={onClose}>閉じる</button>
+        </div>
       </section>
     </div>
   );
