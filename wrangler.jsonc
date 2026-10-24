@@ -7,7 +7,7 @@
   "keep_vars": true,
   "vars": {
     "VAPID_PUBLIC_KEY": "BNuyKpLFQyL2wqlTv4OAZC183J9v0Oj51-LnrroSHYXTUXl0efleJP27DvQghDqAPWQA6gkK7lXLX2y8Fx6tW54",
-    "VAPID_SUBJECT": "https://deadlineapp.zuiken2022robo.workers.dev"
+    "VAPID_SUBJECT": "https://deadlineapp.zuiken.workers.dev/"
   },
   "previews": {},
   "triggers": {
