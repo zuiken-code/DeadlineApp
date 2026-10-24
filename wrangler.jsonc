@@ -3,6 +3,7 @@
   "name": "deadlineapp",
   "compatibility_date": "2026-10-24",
   "workers_dev": true,
+  "previews": {},
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

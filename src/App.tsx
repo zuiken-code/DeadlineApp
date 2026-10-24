@@ -5,19 +5,21 @@ import { AppHeader } from './components/AppHeader'
 import { BottomNavigation } from './components/BottomNavigation'
 import { DeadlineCard } from './components/DeadlineCard'
 import { EditSheet } from './components/EditSheet'
+import { TodoEditSheet } from './components/TodoEditSheet'
 import { TutorialSheet } from './components/TutorialSheet'
 import { GuidedTutorial } from './components/GuidedTutorial'
 import type { SheetMode } from './components/EditSheet'
 import {
   formatDeadline,
   getDaysLeft,
+  getTodoProgressPercentage,
   loadGoal,
   loadTodos,
   saveGoal,
   saveItems,
   toDateInputValue,
 } from './data/appStorage'
-import type { ListItem, ListKind } from './data/appStorage'
+import type { ListItem, ListKind, PageProgress } from './data/appStorage'
 import { getHolidayCount } from './data/holidayApi'
 import './App.css'
 
@@ -28,6 +30,7 @@ function App() {
   const [sheet, setSheet] = useState<SheetMode>(null)
   const [draft, setDraft] = useState('')
   const [goalDraft, setGoalDraft] = useState(goal)
+  const [editingTodoId, setEditingTodoId] = useState<number | null>(null)
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [guidedTutorialOpen, setGuidedTutorialOpen] = useState(false)
   const [holidayCount, setHolidayCount] = useState(0)
@@ -35,14 +38,12 @@ function App() {
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
-  const updateItemProgress = (id: number, value: number) => {
-    updateItems('todo', (items) => items.map((item) => item.id === id ? { ...item, progress: value } : item))
-  }
-
   const goalProgress = useMemo(() => {
     if (!todos.length) return 0
-    return Math.round(todos.reduce((total, item) => total + item.progress, 0) / todos.length * 25)
+    return Math.round(todos.reduce((total, item) => total + getTodoProgressPercentage(item), 0) / todos.length)
   }, [todos])
+
+  const editingTodo = editingTodoId === null ? null : todos.find((item) => item.id === editingTodoId) ?? null
 
   useEffect(() => {
     let cancelled = false
@@ -76,6 +77,21 @@ function App() {
 
   const deleteItem = (kind: ListKind, id: number) => {
     updateItems(kind, (items) => items.filter((item) => item.id !== id))
+  }
+
+  const updateTodoCurrentPage = (id: number, currentPage: number | null) => {
+    updateItems('todo', (items) => items.map((item) => (
+      item.id === id && item.pageProgress
+        ? { ...item, pageProgress: { ...item.pageProgress, currentPage } }
+        : item
+    )))
+  }
+
+  const saveTodoEdit = (id: number, title: string, pageProgress: PageProgress) => {
+    updateItems('todo', (items) => items.map((item) => (
+      item.id === id ? { ...item, title, pageProgress } : item
+    )))
+    setEditingTodoId(null)
   }
 
   const openAdd = (kind: ListKind) => {
@@ -113,7 +129,14 @@ function App() {
       <div className="app-content">
         <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
         <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} goalProgress={goalProgress} onEditGoal={openGoal} />
-        <ActionLists todos={todos} onToggle={toggleItem} onAdd={openAdd} onDelete={deleteItem} onProgressChange={updateItemProgress} />
+        <ActionLists
+          todos={todos}
+          onToggle={toggleItem}
+          onAdd={openAdd}
+          onDelete={deleteItem}
+          onEdit={setEditingTodoId}
+          onCurrentPageChange={updateTodoCurrentPage}
+        />
       </div>
 
       <BottomNavigation onEditGoal={openGoal} />
@@ -129,6 +152,13 @@ function App() {
           onAddItem={addItem}
           onUpdateGoal={updateGoal}
           onClose={closeSheet}
+        />
+      )}
+      {editingTodo && (
+        <TodoEditSheet
+          item={editingTodo}
+          onSave={saveTodoEdit}
+          onClose={() => setEditingTodoId(null)}
         />
       )}
       {tutorialOpen && (
