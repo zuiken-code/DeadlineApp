@@ -8,6 +8,12 @@
   "triggers": {
     "crons": ["*/15 * * * *"]
   },
+  "kv_namespaces": [
+    {
+      "binding": "SUBSCRIPTIONS",
+      "id": "fc00c0ddcd4f467a9d93c3ad9c730ebf"
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
