@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "deadline",
+  "name": "deadlineapp",
   "compatibility_date": "2026-10-25",
   "workers_dev": true,
   "assets": {
