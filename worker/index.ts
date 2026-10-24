@@ -49,6 +49,14 @@ function isConfigured(env: Env) {
   return Boolean(env.SUBSCRIPTIONS && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY)
 }
 
+function getMissingConfiguration(env: Env) {
+  const missing: string[] = []
+  if (!env.SUBSCRIPTIONS) missing.push('SUBSCRIPTIONS')
+  if (!env.VAPID_PUBLIC_KEY) missing.push('VAPID_PUBLIC_KEY')
+  if (!env.VAPID_PRIVATE_KEY) missing.push('VAPID_PRIVATE_KEY')
+  return missing
+}
+
 function isSameOrigin(request: Request) {
   const origin = request.headers.get('origin')
   return !origin || origin === new URL(request.url).origin
@@ -166,7 +174,13 @@ async function deleteSubscription(request: Request, env: Env) {
 async function handleApi(request: Request, env: Env) {
   const { pathname } = new URL(request.url)
   if (pathname === '/api/push/config' && request.method === 'GET') {
-    if (!isConfigured(env)) return json({ available: false }, 503)
+    if (!isConfigured(env)) {
+      const missing = getMissingConfiguration(env)
+      return json({
+        available: false,
+        error: `Cloudflareの通知設定が不足しています: ${missing.join(', ')}`,
+      }, 503)
+    }
     return json({ available: true, publicKey: env.VAPID_PUBLIC_KEY })
   }
   if (pathname === '/api/push/subscription' && request.method === 'POST') {
