@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Cloudflare Pages serves from /; GitHub Pages passes /DeadlineApp/ at build time.
+// Cloudflare Workers serves from /; GitHub Pages passes /DeadlineApp/ at build time.
 const base = process.env.DEPLOY_BASE_PATH || '/'
 
 export default defineConfig({
