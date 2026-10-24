@@ -14,6 +14,7 @@ type EditSheetProps = {
   onAddItem: (event: FormEvent) => void
   onUpdateGoal: (event: FormEvent) => void
   onClose: () => void
+  errorMessage?: string
 }
 
 export function EditSheet({
@@ -26,6 +27,7 @@ export function EditSheet({
   onAddItem,
   onUpdateGoal,
   onClose,
+  errorMessage,
 }: EditSheetProps) {
   const isGoal = mode === 'goal'
 
@@ -51,6 +53,7 @@ export function EditSheet({
               <span>期限</span>
               <input type="date" value={goalDraft.deadline} min={todayKey} onChange={(event) => onGoalDraftChange({ ...goalDraft, deadline: event.target.value })} />
             </label>
+            {errorMessage && <p className="sheet-form-error" role="alert">{errorMessage}</p>}
             <button className="primary-button" type="submit">保存する</button>
           </form>
         ) : (
@@ -59,6 +62,7 @@ export function EditSheet({
               <span>{mode === 'todo' ? '具体的にやること' : '毎日続けたいこと'}</span>
               <input autoFocus value={draft} onChange={(event) => onDraftChange(event.target.value)} placeholder={mode === 'todo' ? '例：模擬問題を1回解く' : '例：朝30分勉強する'} />
             </label>
+            {errorMessage && <p className="sheet-form-error" role="alert">{errorMessage}</p>}
             <button className="primary-button" type="submit" disabled={!draft.trim()}>追加する</button>
           </form>
         )}

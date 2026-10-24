@@ -8,12 +8,13 @@ type ActionListsProps = {
   onDelete: (kind: ListKind, id: number) => void
   onEdit: (id: number) => void
   onCurrentPageChange: (id: number, value: number | null) => void
+  onCurrentPageCommit: (id: number, previousValue: number | null, value: number | null) => void
 }
 
-export function ActionLists({ todos, onToggle, onAdd, onDelete, onEdit, onCurrentPageChange }: ActionListsProps) {
+export function ActionLists({ todos, onToggle, onAdd, onDelete, onEdit, onCurrentPageChange, onCurrentPageCommit }: ActionListsProps) {
   return (
     <section className="lists" aria-label="期限までの行動">
-      <TaskListColumn kind="todo" items={todos} onToggle={onToggle} onAdd={onAdd} onDelete={onDelete} onEdit={onEdit} onCurrentPageChange={onCurrentPageChange} />
+      <TaskListColumn kind="todo" items={todos} onToggle={onToggle} onAdd={onAdd} onDelete={onDelete} onEdit={onEdit} onCurrentPageChange={onCurrentPageChange} onCurrentPageCommit={onCurrentPageCommit} />
     </section>
   )
 }

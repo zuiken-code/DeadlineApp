@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ActionLists } from './components/ActionLists'
+import { AnalyticsConsentDialog } from './components/AnalyticsConsentDialog'
 import { AppHeader } from './components/AppHeader'
 import { BottomNavigation } from './components/BottomNavigation'
 import { DeadlineCard } from './components/DeadlineCard'
@@ -23,6 +24,17 @@ import {
   toDateInputValue,
 } from './data/appStorage'
 import type { ListItem, ListKind, PageProgress } from './data/appStorage'
+import {
+  getDeadlineBucket,
+  getProgressBucket,
+  getProgressMode,
+  getTodoCountBucket,
+  initializeAnalytics,
+  loadAnalyticsConsent,
+  trackAnalyticsEvent,
+  updateAnalyticsConsent,
+} from './data/analytics'
+import type { AnalyticsConsent } from './data/analytics'
 import { getHolidayCount } from './data/holidayApi'
 import {
   disablePushNotifications,
@@ -50,6 +62,8 @@ function App() {
   const [pushStatus, setPushStatus] = useState<PushStatus>('loading')
   const [pushMessage, setPushMessage] = useState('')
   const [pushStatusCheckId, setPushStatusCheckId] = useState(0)
+  const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(loadAnalyticsConsent)
+  const [storageMessage, setStorageMessage] = useState('')
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
@@ -59,6 +73,10 @@ function App() {
   }, [todos])
 
   const editingTodo = editingTodoId === null ? null : todos.find((item) => item.id === editingTodoId) ?? null
+
+  useEffect(() => {
+    return initializeAnalytics()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -87,19 +105,25 @@ function App() {
   }, [activePage, pushStatusCheckId])
 
   const updateItems = (kind: ListKind, update: (items: ListItem[]) => ListItem[]) => {
-    if (kind !== 'todo') return
-    const setter = setTodos
-    setter((current) => {
-      const next = update(current)
-      saveItems(kind, next)
-      return next
-    })
+    if (kind !== 'todo') return null
+    const next = update(todos)
+    if (!saveItems(kind, next)) {
+      setStorageMessage('端末に保存できませんでした。空き容量やブラウザの保存設定を確認してください。')
+      return null
+    }
+    setTodos(next)
+    setStorageMessage('')
+    return next
   }
 
   const toggleItem = (kind: ListKind, id: number) => {
-    updateItems(kind, (items) => items.map((item) => (
+    const previous = todos.find((item) => item.id === id)
+    const next = updateItems(kind, (items) => items.map((item) => (
       item.id === id ? { ...item, completed: !item.completed } : item
     )))
+    if (previous && next) {
+      trackAnalyticsEvent(previous.completed ? 'todo_unchecked' : 'todo_checked', {})
+    }
   }
 
   const deleteItem = (kind: ListKind, id: number) => {
@@ -114,19 +138,40 @@ function App() {
     )))
   }
 
+  const commitTodoCurrentPage = (id: number, previousValue: number | null, currentPage: number | null) => {
+    if (previousValue === currentPage) return
+    const item = todos.find((todo) => todo.id === id)
+    if (!item?.pageProgress || item.pageProgress.currentPage !== currentPage) return
+    trackAnalyticsEvent('progress_saved', {
+      progress_mode: getProgressMode(item),
+      progress_bucket: getProgressBucket(getTodoProgressPercentage(item)),
+    })
+  }
+
   const saveTodoEdit = (id: number, title: string, pageProgress: PageProgress) => {
-    updateItems('todo', (items) => items.map((item) => (
-      item.id === id ? { ...item, title, pageProgress } : item
+    const previous = todos.find((item) => item.id === id)
+    const nextItem = previous ? { ...previous, title, pageProgress } : null
+    const next = updateItems('todo', (items) => items.map((item) => (
+      item.id === id && nextItem ? nextItem : item
     )))
+    if (!next || !previous || !nextItem) return
+    if (getTodoProgressPercentage(previous) !== getTodoProgressPercentage(nextItem)) {
+      trackAnalyticsEvent('progress_saved', {
+        progress_mode: getProgressMode(nextItem),
+        progress_bucket: getProgressBucket(getTodoProgressPercentage(nextItem)),
+      })
+    }
     setEditingTodoId(null)
   }
 
   const openAdd = (kind: ListKind) => {
+    setStorageMessage('')
     setDraft('')
     setSheet(kind)
   }
 
   const openGoal = () => {
+    setStorageMessage('')
     setGoalDraft(goal)
     setSheet('goal')
   }
@@ -137,7 +182,13 @@ function App() {
     event.preventDefault()
     const title = draft.trim()
     if (!title || sheet !== 'todo') return
-    updateItems(sheet, (items) => [...items, { id: Date.now(), title, completed: false, progress: 0 }])
+    const newItem: ListItem = { id: Date.now(), title, completed: false, progress: 0 }
+    const next = updateItems(sheet, (items) => [...items, newItem])
+    if (!next) return
+    trackAnalyticsEvent('todo_added', {
+      progress_mode: getProgressMode(newItem),
+      todo_count_bucket: getTodoCountBucket(next.length),
+    })
     closeSheet()
     setDraft('')
   }
@@ -146,8 +197,22 @@ function App() {
     event.preventDefault()
     if (!goalDraft.title.trim() || !goalDraft.deadline) return
     const next = { ...goalDraft, title: goalDraft.title.trim() }
+    const hadGoal = Boolean(goal.title && goal.deadline)
+    const titleChanged = goal.title !== next.title
+    const deadlineChanged = goal.deadline !== next.deadline
+    if (!saveGoal(next)) {
+      setStorageMessage('目標を端末に保存できませんでした。空き容量やブラウザの保存設定を確認してください。')
+      return
+    }
     setGoal(next)
-    saveGoal(next)
+    setStorageMessage('')
+    if (!hadGoal) {
+      trackAnalyticsEvent('goal_set', { deadline_bucket: getDeadlineBucket(getDaysLeft(next.deadline, todayKey)) })
+    } else if (titleChanged || deadlineChanged) {
+      trackAnalyticsEvent('goal_edited', {
+        changed_field: titleChanged && deadlineChanged ? 'both' : titleChanged ? 'title' : 'deadline',
+      })
+    }
     if (pushStatus === 'enabled') {
       syncPushSubscription(next, notificationTime).catch(() => {
         setPushStatus('error')
@@ -204,6 +269,12 @@ function App() {
     setActivePage(page)
   }
 
+  const changeAnalyticsConsent = (enabled: boolean) => {
+    const nextConsent = enabled ? 'granted' : 'denied'
+    updateAnalyticsConsent(nextConsent)
+    setAnalyticsConsent(nextConsent)
+  }
+
   return (
     <main className="app-shell">
       <div className="app-content">
@@ -218,6 +289,7 @@ function App() {
               onDelete={deleteItem}
               onEdit={setEditingTodoId}
               onCurrentPageChange={updateTodoCurrentPage}
+              onCurrentPageCommit={commitTodoCurrentPage}
             />
           </>
         ) : (
@@ -225,9 +297,11 @@ function App() {
             notificationTime={notificationTime}
             pushStatus={pushStatus}
             pushMessage={pushMessage}
+            analyticsConsent={analyticsConsent}
             hasGoal={Boolean(goal.title && goal.deadline)}
             onNotificationTimeChange={updateNotificationTime}
             onToggleNotifications={toggleNotifications}
+            onAnalyticsConsentChange={changeAnalyticsConsent}
             onOpenTutorial={() => setTutorialOpen(true)}
           />
         )}
@@ -246,6 +320,7 @@ function App() {
           onAddItem={addItem}
           onUpdateGoal={updateGoal}
           onClose={closeSheet}
+          errorMessage={storageMessage}
         />
       )}
       {editingTodo && (
@@ -253,19 +328,35 @@ function App() {
           item={editingTodo}
           onSave={saveTodoEdit}
           onClose={() => setEditingTodoId(null)}
+          errorMessage={storageMessage}
         />
       )}
       {tutorialOpen && (
         <TutorialSheet
           onClose={() => setTutorialOpen(false)}
           onStartGuide={() => {
+            trackAnalyticsEvent('tutorial_started', {})
             setTutorialOpen(false)
             setActivePage('home')
             setGuidedTutorialOpen(true)
           }}
         />
       )}
-      {guidedTutorialOpen && <GuidedTutorial onClose={() => setGuidedTutorialOpen(false)} />}
+      {guidedTutorialOpen && (
+        <GuidedTutorial
+          onClose={() => setGuidedTutorialOpen(false)}
+          onComplete={() => {
+            trackAnalyticsEvent('tutorial_completed', {})
+            setGuidedTutorialOpen(false)
+          }}
+        />
+      )}
+      {analyticsConsent === 'pending' && (
+        <AnalyticsConsentDialog
+          onAccept={() => changeAnalyticsConsent(true)}
+          onDecline={() => changeAnalyticsConsent(false)}
+        />
+      )}
     </main>
   )
 }

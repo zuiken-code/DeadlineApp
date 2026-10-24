@@ -88,8 +88,10 @@ function readStorage<T>(key: string, fallback: T): T {
 function writeStorage<T>(key: string, value: T) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
+    return true
   } catch {
     // Storage can be unavailable in private mode or after the quota is reached.
+    return false
   }
 }
 
@@ -102,7 +104,7 @@ export function loadGoal() {
 }
 
 export function saveGoal(goal: Goal) {
-  writeStorage(STORAGE_KEYS.goal, goal)
+  return writeStorage(STORAGE_KEYS.goal, goal)
 }
 
 export function loadNotificationTime() {
@@ -111,7 +113,7 @@ export function loadNotificationTime() {
 }
 
 export function saveNotificationTime(value: string) {
-  writeStorage(STORAGE_KEYS.notificationTime, value)
+  return writeStorage(STORAGE_KEYS.notificationTime, value)
 }
 
 export function loadTodos() {
@@ -142,7 +144,7 @@ export function loadRoutines(todayKey: string) {
 }
 
 export function saveItems(kind: ListKind, items: ListItem[]) {
-  writeStorage(kind === 'todo' ? STORAGE_KEYS.todos : STORAGE_KEYS.routines, items)
+  return writeStorage(kind === 'todo' ? STORAGE_KEYS.todos : STORAGE_KEYS.routines, items)
 }
 
 export function getDaysLeft(deadline: string, todayKey: string) {

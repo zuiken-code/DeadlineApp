@@ -4,7 +4,7 @@
 
 Appleの[Human Interface Guidelines](https://developer.apple.com/jp/design/human-interface-guidelines/)を参考に、迷わず使えるシンプルな画面と、メインカラー`#26A79A`で設計しています。
 
-**公開版:** [https://deadlineapp.zuiken2022robo.workers.dev/](https://deadlineapp.zuiken2022robo.workers.dev/)
+**公開版:** [https://deadlineapp.zuiken.workers.dev/](https://deadlineapp.zuiken.workers.dev/)
 
 ## 主な機能
 
@@ -18,6 +18,7 @@ Appleの[Human Interface Guidelines](https://developer.apple.com/jp/design/human
 - localStorageによる端末内保存
 - PWAとしてホーム画面へ追加でき、アプリ本体はオフラインでも利用可能
 - 設定画面から通知時刻を選び、目標までの残り日数をWeb Pushで毎日通知
+- 任意の同意後に限り、Google Analytics 4で匿名化した利用イベントを計測
 
 ## 使い方
 
@@ -63,6 +64,7 @@ TODOの達成度 = round(完了ページ数 / 総ページ数 × 100)
 - Vite
 - vite-plugin-pwa / Workbox
 - Oxlint
+- ReactGA / Google Analytics 4
 - GitHub Actions
 - GitHub Pages
 - Cloudflare Workers Static Assets
@@ -99,6 +101,7 @@ src/
 ├─ components/       UIコンポーネント
 ├─ data/
 │  ├─ appStorage.ts  目標・TODOの保存と日付処理
+│  ├─ analytics.ts   GA4の同意管理・イベント送信
 │  └─ holidayApi.ts  祝日APIとキャッシュ
 ├─ App.tsx            状態管理と画面構成
 ├─ App.css            アプリ固有のスタイル
@@ -115,11 +118,13 @@ worker/               通知登録APIと定期配信Worker
 
 期限リマインダーをオンにした場合に限り、Web Push配信に必要な購読情報、目標名、期限、通知時刻、端末のタイムゾーンをCloudflare KVへ保存します。TODO、ページ数、達成度は通知サーバーへ送りません。通知をオフにするとKVの登録情報を削除し、無効になった購読情報も配信時に自動削除します。
 
+Google Analyticsは初回の確認で同意した場合に限り読み込みます。目標設定、TODO追加、進捗更新、完了チェック、チュートリアルの利用状況を区分値として送信しますが、目標名、TODO本文、入力したページ番号、正確な期限は送信しません。設定画面の「利用状況の共有」からいつでも停止・再開できます。ローカル開発、Cloudflareのプレビュー、オフライン操作では送信しません。
+
 ブラウザのサイトデータを削除すると、保存した目標とTODOも削除されます。現時点では端末間同期やバックアップ機能はありません。
 
 ## デプロイ
 
-Cloudflare WorkersのGit連携では、Production branchを`main`、Build commandを`npm run build`、Deploy commandを`npm run deploy:worker`に設定します。`wrangler.jsonc`は既存Worker名`deadlineapp`で`dist`をStatic Assetsとして配信するため、公開URLは`https://deadlineapp.zuiken2022robo.workers.dev/`のルートで動作します。Cloudflare側では環境変数`DEPLOY_BASE_PATH`を設定しません。これにより、JavaScript・マニフェスト・PWAの起動URLはすべて`/`を参照します。[Workers Buildsの設定](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)と[Static Assets](https://developers.cloudflare.com/workers/static-assets/)に沿った構成です。
+Cloudflare WorkersのGit連携では、Production branchを`main`、Build commandを`npm run build`、Deploy commandを`npm run deploy:worker`に設定します。`wrangler.jsonc`は既存Worker名`deadlineapp`で`dist`をStatic Assetsとして配信するため、公開URLは`https://deadlineapp.zuiken.workers.dev/`のルートで動作します。Cloudflare側では環境変数`DEPLOY_BASE_PATH`を設定しません。これにより、JavaScript・マニフェスト・PWAの起動URLはすべて`/`を参照します。[Workers Buildsの設定](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)と[Static Assets](https://developers.cloudflare.com/workers/static-assets/)に沿った構成です。
 
 GitHub Pagesへの既存の自動デプロイも維持します。GitHub Actionsのビルド時だけ`DEPLOY_BASE_PATH=/DeadlineApp/`を指定し、リポジトリのサブパスに合わせます。Cloudflare WorkerとGitHub Pagesはいずれも`main`へのpushで再ビルドされます。Cloudflareでの最初のデプロイ後は、ページ本体に加えて`/assets/`配下のJSと`/manifest.webmanifest`が正しい形式で返ることを確認してください。
 
@@ -152,7 +157,7 @@ GitHub Pagesへの既存の自動デプロイも維持します。GitHub Actions
 4. **Workerへ変数とSecretを追加する**
    - `VAPID_PUBLIC_KEY`：生成されたPublic Key（通常の変数）
    - `VAPID_PRIVATE_KEY`：生成されたPrivate Key（Secretとして暗号化）
-   - `VAPID_SUBJECT`：`https://deadlineapp.zuiken2022robo.workers.dev`（通常の変数）
+   - `VAPID_SUBJECT`：`https://deadlineapp.zuiken.workers.dev/`（通常の変数）
    - `wrangler.jsonc`の`keep_vars: true`により、Gitデプロイ後もダッシュボードで設定した変数を保持
 5. **最新デプロイを確認する**
    - `wrangler.jsonc`の`*/15 * * * *`によりCronが15分ごとに実行される
@@ -167,13 +172,13 @@ VAPID Private Keyはリポジトリ、Pull Request、通常の環境変数へ記
 
 ## 今後の開発・公開計画（提案）
 
-以下は**実装済み機能ではなく、次のPull Request以降の設計案**です。まず既存機能の安定性とデータ保護を確認し、計測の基準を作ってからページ数による進捗管理を追加します。どちらの機能も、利用者が目標を立て、少しずつ進み、また戻って来られるかを判断するために進めます。
+以下は実装済み機能の計測基準と、今後の公開・改善計画です。利用者が目標を立て、少しずつ進み、また戻って来られるかを判断するために使います。
 
-### 1. Google Analytics 4：何を知りたいかから決める
+### 1. Google Analytics 4：何を知りたいかから決める（実装済み）
 
 目的は単なるアクセス数の増加ではありません。「初回訪問 → 目標設定 → TODO追加 → 進捗更新 → 再訪問」のどこで使いにくくなるかを見つけ、改善につなげます。このPWAはWebサイトとして配信されるため、GA4では**Webデータストリーム**を使います。Webの初回訪問は自動収集される`first_visit`で確認し、ネイティブアプリ向けの`first_open`を独自送信しません。`page_view`、`session_start`、`user_engagement`も自動収集に任せ、重複送信を避けます。ホーム画面に追加したPWAからの起動も同じWebサイトとして扱います。詳しくは[GA4の自動収集イベント](https://support.google.com/analytics/answer/9234069)と[イベント設定](https://developers.google.com/analytics/devguides/collection/ga4/events)を参照してください。
 
-**イベントの契約案**：画面を開いただけ、入力を始めただけでは「設定した」と数えません。保存に成功し、アプリの状態が変わった時に1回送ります。スライダー操作やページ数入力は途中の値を送らず、指を離す・キーボードで確定する・編集シートで保存する時だけ送ります。全ての独自イベントに`schema_version: 1`を付け、後から定義を変えた場合に比較できるようにします。
+**イベントの契約**：画面を開いただけ、入力を始めただけでは「設定した」と数えません。保存に成功し、アプリの状態が変わった時に1回送ります。ページ数入力は途中の値を送らず、フォーカスを外す・Enterで確定する・編集シートで保存する時だけ送ります。全ての独自イベントに`schema_version: 1`を付け、後から定義を変えた場合に比較できるようにします。
 
 | イベント | 送信タイミング | 送る項目（例） | 分かること |
 | --- | --- | --- | --- |
@@ -212,7 +217,7 @@ GA4のファネル探索やコホート分析では**イベント数ではなく
 - 同意しなかった人、分析ブロッカーを使う人、オフライン利用分はGA4に現れない。したがって`first_visit`は「アプリを初めて開いた全員」ではなく「計測できた初回訪問者」として扱う。
 - 初回の同意選択は利用開始前に提示するが、拒否してもアプリは使えるようにする。同意前の操作は後からGA4へ補送しないため、途中から同意した人の導入ファネルは欠け得ることを分析時に明記する。
 
-実装は「プライバシー説明と同意UI → GA4のWebストリームと送信窓口 → 上表のイベント → DebugViewで検証 → 公開後に指標を確認」の順で、独立したPull Requestにします。GA4の測定IDは公開用の設定値として管理し、アプリ内に秘密鍵やMeasurement ProtocolのAPIシークレットを置きません。送信処理を1か所に集約し、同意状態、開発環境、オフライン状態をそこで判定します。公開直後のデータを基準として残し、後述のページ機能の影響を比較します。
+ReactGAを送信窓口として使い、同意状態、開発環境、公開ホスト、オンライン状態を`analytics.ts`で一括判定します。測定IDは公開用の設定値として管理し、アプリ内に秘密鍵やMeasurement ProtocolのAPIシークレットを置きません。公開後はRealtimeとDebugViewで重複送信がないことを確認し、初期データを今後の改善基準として残します。
 
 ### 2. ページ数で達成率を記録する（実装済み）
 
