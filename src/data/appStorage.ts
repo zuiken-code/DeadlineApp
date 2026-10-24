@@ -26,6 +26,7 @@ const STORAGE_KEYS = {
   todos: 'deadline-todos',
   routines: 'deadline-routines',
   routineDay: 'deadline-routine-day',
+  notificationTime: 'deadline-notification-time',
 } as const
 
 const DEFAULT_TODOS: ListItem[] = []
@@ -102,6 +103,15 @@ export function loadGoal() {
 
 export function saveGoal(goal: Goal) {
   writeStorage(STORAGE_KEYS.goal, goal)
+}
+
+export function loadNotificationTime() {
+  const value = readStorage<string>(STORAGE_KEYS.notificationTime, '08:00')
+  return /^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(value) ? value : '08:00'
+}
+
+export function saveNotificationTime(value: string) {
+  writeStorage(STORAGE_KEYS.notificationTime, value)
 }
 
 export function loadTodos() {
