@@ -556,7 +556,6 @@
 .consent-summary p { display: grid; gap: 3px; margin: 0; padding: 12px 14px; background: var(--grouped); }
 .consent-summary strong { font-size: 12px; }
 .consent-summary span { color: var(--secondary); font-size: 10px; line-height: 1.5; }
-.consent-dialog .consent-note { color: var(--tertiary); font-size: 10px; }
 .consent-actions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; margin-top: 19px; }
 .consent-actions .primary-button, .consent-actions .secondary-button { height: 48px; margin: 0; }
 

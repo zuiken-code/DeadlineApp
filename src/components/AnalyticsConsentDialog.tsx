@@ -14,7 +14,6 @@ export function AnalyticsConsentDialog({ onAccept, onDecline }: AnalyticsConsent
           <p><strong>送信するもの</strong><span>目標設定、TODO追加、進捗更新などの操作種別と区分値</span></p>
           <p><strong>送信しないもの</strong><span>目標名、TODO本文、ページ番号、正確な期限</span></p>
         </div>
-        <p className="consent-note">同意しなくてもすべての機能を利用できます。設定からいつでも変更できます。</p>
         <div className="consent-actions">
           <button type="button" className="secondary-button" onClick={onDecline}>同意しない</button>
           <button type="button" className="primary-button" onClick={onAccept}>同意して続ける</button>
