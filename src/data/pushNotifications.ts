@@ -2,6 +2,11 @@ import type { Goal } from './appStorage'
 
 export type PushStatus = 'loading' | 'unsupported' | 'unavailable' | 'disabled' | 'enabled' | 'denied' | 'busy' | 'error'
 
+export type PushStatusCheck = {
+  status: PushStatus
+  message?: string
+}
+
 type PushConfig = {
   available: boolean
   publicKey?: string
@@ -10,6 +15,7 @@ type PushConfig = {
 
 const API_ROOT = `${import.meta.env.BASE_URL}api/push`
 const SERVICE_WORKER_TIMEOUT = 5000
+const API_TIMEOUT = 10000
 
 function supportsPushNotifications() {
   return window.isSecureContext
@@ -38,10 +44,25 @@ async function getServiceWorkerRegistration() {
 }
 
 async function fetchConfig() {
-  const response = await fetch(`${API_ROOT}/config`, {
-    headers: { accept: 'application/json' },
-    cache: 'no-store',
-  })
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), API_TIMEOUT)
+  let response: Response
+
+  try {
+    response = await fetch(`${API_ROOT}/config`, {
+      headers: { accept: 'application/json' },
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error('通知サーバーから応答がありません。通信状態を確認して、もう一度設定を押してください。')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
+
   const data = await response.json().catch(() => ({ available: false })) as PushConfig
   if (!response.ok || !data.available || !data.publicKey) {
     throw new Error(data.error || '通知サーバーの準備が完了していません。')
@@ -68,18 +89,31 @@ export function isValidNotificationTime(value: string) {
   return /^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(value)
 }
 
-export async function getPushStatus(): Promise<PushStatus> {
-  if (!supportsPushNotifications()) return 'unsupported'
-  if (Notification.permission === 'denied') return 'denied'
+export async function getPushStatus(): Promise<PushStatusCheck> {
+  if (!supportsPushNotifications()) {
+    return {
+      status: 'unsupported',
+      message: 'この環境ではWeb Push通知を利用できません。HTTPSで開いていることと、ブラウザの対応状況を確認してください。',
+    }
+  }
+  if (Notification.permission === 'denied') {
+    return {
+      status: 'denied',
+      message: '通知がブロックされています。ブラウザまたはWindowsの設定から期限くんの通知を許可してください。',
+    }
+  }
 
   try {
     const registration = await getServiceWorkerRegistration()
     const subscription = await registration.pushManager.getSubscription()
-    if (subscription) return 'enabled'
+    if (subscription) return { status: 'enabled' }
     await fetchConfig()
-    return 'disabled'
-  } catch {
-    return 'unavailable'
+    return { status: 'disabled' }
+  } catch (error) {
+    return {
+      status: 'unavailable',
+      message: error instanceof Error ? error.message : '通知機能の準備状況を確認できませんでした。もう一度設定を押してください。',
+    }
   }
 }
 

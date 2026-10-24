@@ -49,6 +49,7 @@ function App() {
   const [notificationTime, setNotificationTime] = useState(loadNotificationTime)
   const [pushStatus, setPushStatus] = useState<PushStatus>('loading')
   const [pushMessage, setPushMessage] = useState('')
+  const [pushStatusCheckId, setPushStatusCheckId] = useState(0)
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
@@ -76,11 +77,14 @@ function App() {
   useEffect(() => {
     if (activePage !== 'settings') return
     let cancelled = false
-    getPushStatus().then((status) => {
-      if (!cancelled) setPushStatus(status)
+    getPushStatus().then((result) => {
+      if (!cancelled) {
+        setPushStatus(result.status)
+        setPushMessage(result.message ?? '')
+      }
     })
     return () => { cancelled = true }
-  }, [activePage])
+  }, [activePage, pushStatusCheckId])
 
   const updateItems = (kind: ListKind, update: (items: ListItem[]) => ListItem[]) => {
     if (kind !== 'todo') return
@@ -193,6 +197,9 @@ function App() {
     if (page === 'settings') {
       setPushStatus('loading')
       setPushMessage('')
+      if (activePage === 'settings') {
+        setPushStatusCheckId((current) => current + 1)
+      }
     }
     setActivePage(page)
   }
