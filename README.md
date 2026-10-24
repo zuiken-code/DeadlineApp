@@ -153,6 +153,7 @@ GitHub Pagesへの既存の自動デプロイも維持します。GitHub Actions
    - `VAPID_PUBLIC_KEY`：生成されたPublic Key（通常の変数）
    - `VAPID_PRIVATE_KEY`：生成されたPrivate Key（Secretとして暗号化）
    - `VAPID_SUBJECT`：`https://deadlineapp.zuiken2022robo.workers.dev`（通常の変数）
+   - `wrangler.jsonc`の`keep_vars: true`により、Gitデプロイ後もダッシュボードで設定した変数を保持
 5. **最新デプロイを確認する**
    - `wrangler.jsonc`の`*/15 * * * *`によりCronが15分ごとに実行される
    - Settings → TriggersでCron Triggerが作成されていることを確認
