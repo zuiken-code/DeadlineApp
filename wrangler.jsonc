@@ -4,6 +4,7 @@
   "main": "./worker/index.ts",
   "compatibility_date": "2026-10-24",
   "workers_dev": true,
+  "keep_vars": true,
   "previews": {},
   "triggers": {
     "crons": ["*/15 * * * *"]
