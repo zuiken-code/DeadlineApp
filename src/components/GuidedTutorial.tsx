@@ -29,8 +29,8 @@ const steps: GuideStep[] = [
   },
   {
     target: '[data-tour="progress"]',
-    title: '達成率を記録',
-    body: 'TODOを追加すると、右側のスライダーで5段階の達成率を記録できます。',
+    title: 'ページ進捗を記録',
+    body: 'TODOの編集ボタンからページ範囲を設定し、一覧の現在ページを入力すると達成率が自動で計算されます。',
   },
 ]
 

@@ -3,11 +3,18 @@ export type Goal = {
   deadline: string
 }
 
+export type PageProgress = {
+  startPage: number
+  endPage: number
+  currentPage: number | null
+}
+
 export type ListItem = {
   id: number
   title: string
   completed: boolean
   progress: number
+  pageProgress?: PageProgress
 }
 
 export type ListKind = 'todo' | 'routine'
@@ -24,6 +31,35 @@ const STORAGE_KEYS = {
 const DEFAULT_TODOS: ListItem[] = []
 
 const DEFAULT_ROUTINES: ListItem[] = []
+
+function normalizePageProgress(value: unknown): PageProgress | undefined {
+  if (!value || typeof value !== 'object') return undefined
+
+  const pageProgress = value as Partial<PageProgress>
+  const startPage = Number(pageProgress.startPage)
+  const endPage = Number(pageProgress.endPage)
+  const currentPage = pageProgress.currentPage == null ? null : Number(pageProgress.currentPage)
+
+  if (!Number.isSafeInteger(startPage) || startPage < 1) return undefined
+  if (!Number.isSafeInteger(endPage) || endPage < startPage) return undefined
+  if (currentPage !== null && (!Number.isSafeInteger(currentPage) || currentPage < startPage || currentPage > endPage)) return undefined
+
+  return { startPage, endPage, currentPage }
+}
+
+export function getPageCount(pageProgress: PageProgress) {
+  return pageProgress.endPage - pageProgress.startPage + 1
+}
+
+export function getCompletedPageCount(pageProgress: PageProgress) {
+  if (pageProgress.currentPage === null) return 0
+  return pageProgress.currentPage - pageProgress.startPage + 1
+}
+
+export function getTodoProgressPercentage(item: ListItem) {
+  if (!item.pageProgress) return item.progress * 25
+  return Math.round(getCompletedPageCount(item.pageProgress) / getPageCount(item.pageProgress) * 100)
+}
 
 export function toDateInputValue(date: Date) {
   const year = date.getFullYear()
@@ -69,12 +105,16 @@ export function saveGoal(goal: Goal) {
 }
 
 export function loadTodos() {
-  return readStorage<Partial<ListItem>[]>(STORAGE_KEYS.todos, DEFAULT_TODOS).map((item) => ({
-    id: item.id ?? Date.now(),
-    title: item.title ?? '',
-    completed: item.completed ?? false,
-    progress: Math.min(4, Math.max(0, Number.isFinite(item.progress) ? item.progress as number : 0)),
-  }))
+  return readStorage<Partial<ListItem>[]>(STORAGE_KEYS.todos, DEFAULT_TODOS).map((item) => {
+    const pageProgress = normalizePageProgress(item.pageProgress)
+    return {
+      id: item.id ?? Date.now(),
+      title: item.title ?? '',
+      completed: item.completed ?? false,
+      progress: Math.min(4, Math.max(0, Number.isFinite(item.progress) ? item.progress as number : 0)),
+      ...(pageProgress ? { pageProgress } : {}),
+    }
+  })
 }
 
 export function loadRoutines(todayKey: string) {
