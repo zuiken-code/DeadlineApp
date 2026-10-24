@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ActionLists } from './components/ActionLists'
 import { AnalyticsConsentDialog } from './components/AnalyticsConsentDialog'
@@ -9,15 +9,19 @@ import { EditSheet } from './components/EditSheet'
 import { TodoEditSheet } from './components/TodoEditSheet'
 import { TutorialSheet } from './components/TutorialSheet'
 import { GuidedTutorial } from './components/GuidedTutorial'
+import type { GuideFinishAction } from './components/GuidedTutorial'
+import { NotificationPrompt } from './components/NotificationPrompt'
 import { SettingsPage } from './components/SettingsPage'
 import type { SheetMode } from './components/EditSheet'
 import {
   formatDeadline,
   getDaysLeft,
   getTodoProgressPercentage,
+  hasSeenGuidedTutorial,
   loadGoal,
   loadNotificationTime,
   loadTodos,
+  markGuidedTutorialSeen,
   saveGoal,
   saveItems,
   saveNotificationTime,
@@ -45,6 +49,13 @@ import {
 import type { PushStatus } from './data/pushNotifications'
 import './App.css'
 
+type InstallPromptEvent = Event & { prompt: () => Promise<void> }
+
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true
+}
+
 function App() {
   const [activePage, setActivePage] = useState<'home' | 'settings'>('home')
   const [todayKey] = useState(() => toDateInputValue(new Date()))
@@ -64,6 +75,9 @@ function App() {
   const [pushStatusCheckId, setPushStatusCheckId] = useState(0)
   const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(loadAnalyticsConsent)
   const [storageMessage, setStorageMessage] = useState('')
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null)
+  const [installed, setInstalled] = useState(isAppInstalled)
+  const pushOperationInProgress = useRef(false)
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
@@ -76,6 +90,28 @@ function App() {
 
   useEffect(() => {
     return initializeAnalytics()
+  }, [])
+
+  useEffect(() => {
+    const displayMode = window.matchMedia('(display-mode: standalone)')
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault()
+      setInstallPrompt(event as InstallPromptEvent)
+    }
+    const handleInstalled = () => {
+      setInstalled(true)
+      setInstallPrompt(null)
+    }
+    const handleDisplayModeChange = () => setInstalled(isAppInstalled())
+
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt)
+    window.addEventListener('appinstalled', handleInstalled)
+    displayMode.addEventListener('change', handleDisplayModeChange)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
+      window.removeEventListener('appinstalled', handleInstalled)
+      displayMode.removeEventListener('change', handleDisplayModeChange)
+    }
   }, [])
 
   useEffect(() => {
@@ -93,16 +129,25 @@ function App() {
   }, [goal.deadline, todayKey])
 
   useEffect(() => {
-    if (activePage !== 'settings') return
+    if (pushOperationInProgress.current) return
     let cancelled = false
     getPushStatus().then((result) => {
-      if (!cancelled) {
+      if (!cancelled && !pushOperationInProgress.current) {
         setPushStatus(result.status)
         setPushMessage(result.message ?? '')
       }
     })
     return () => { cancelled = true }
   }, [activePage, pushStatusCheckId])
+
+  const promptInstall = () => {
+    if (!installPrompt) return
+    const prompt = installPrompt
+    setInstallPrompt(null)
+    void prompt.prompt().catch(() => {
+      // The browser menu remains available if its installation prompt cannot open.
+    })
+  }
 
   const updateItems = (kind: ListKind, update: (items: ListItem[]) => ListItem[]) => {
     if (kind !== 'todo') return null
@@ -223,6 +268,7 @@ function App() {
   }
 
   const toggleNotifications = async () => {
+    pushOperationInProgress.current = true
     setPushStatus('busy')
     setPushMessage('')
     try {
@@ -239,6 +285,8 @@ function App() {
       const denied = 'Notification' in window && Notification.permission === 'denied'
       setPushStatus(denied ? 'denied' : 'error')
       setPushMessage(error instanceof Error ? error.message : '通知設定を変更できませんでした。')
+    } finally {
+      pushOperationInProgress.current = false
     }
   }
 
@@ -270,9 +318,27 @@ function App() {
   }
 
   const changeAnalyticsConsent = (enabled: boolean) => {
+    const isInitialChoice = analyticsConsent === 'pending'
     const nextConsent = enabled ? 'granted' : 'denied'
     updateAnalyticsConsent(nextConsent)
     setAnalyticsConsent(nextConsent)
+    if (isInitialChoice && !hasSeenGuidedTutorial() && !goal.title && !goal.deadline && todos.length === 0) {
+      markGuidedTutorialSeen()
+      setActivePage('home')
+      setGuidedTutorialOpen(true)
+      trackAnalyticsEvent('tutorial_started', {})
+    }
+  }
+
+  const completeGuidedTutorial = (action: GuideFinishAction) => {
+    trackAnalyticsEvent('tutorial_completed', {})
+    setGuidedTutorialOpen(false)
+    if (action === 'create-goal') openGoal()
+    if (action === 'open-settings') navigate('settings')
+    if (action === 'enable-notifications') {
+      setActivePage('settings')
+      void toggleNotifications()
+    }
   }
 
   return (
@@ -282,6 +348,13 @@ function App() {
           <>
             <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
             <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} goalProgress={goalProgress} onEditGoal={openGoal} />
+            {goal.title && goal.deadline && (
+              <NotificationPrompt
+                status={pushStatus}
+                onEnable={() => { void toggleNotifications() }}
+                onOpenSettings={() => navigate('settings')}
+              />
+            )}
             <ActionLists
               todos={todos}
               onToggle={toggleItem}
@@ -335,6 +408,7 @@ function App() {
         <TutorialSheet
           onClose={() => setTutorialOpen(false)}
           onStartGuide={() => {
+            markGuidedTutorialSeen()
             trackAnalyticsEvent('tutorial_started', {})
             setTutorialOpen(false)
             setActivePage('home')
@@ -345,10 +419,12 @@ function App() {
       {guidedTutorialOpen && (
         <GuidedTutorial
           onClose={() => setGuidedTutorialOpen(false)}
-          onComplete={() => {
-            trackAnalyticsEvent('tutorial_completed', {})
-            setGuidedTutorialOpen(false)
-          }}
+          onComplete={completeGuidedTutorial}
+          hasGoal={Boolean(goal.title && goal.deadline)}
+          pushStatus={pushStatus}
+          isInstalled={installed}
+          canPromptInstall={Boolean(installPrompt)}
+          onInstall={promptInstall}
         />
       )}
       {analyticsConsent === 'pending' && (

@@ -27,6 +27,7 @@ const STORAGE_KEYS = {
   routines: 'deadline-routines',
   routineDay: 'deadline-routine-day',
   notificationTime: 'deadline-notification-time',
+  guidedTutorialSeen: 'deadline-guided-tutorial-seen',
 } as const
 
 const DEFAULT_TODOS: ListItem[] = []
@@ -105,6 +106,22 @@ export function loadGoal() {
 
 export function saveGoal(goal: Goal) {
   return writeStorage(STORAGE_KEYS.goal, goal)
+}
+
+export function hasSeenGuidedTutorial() {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.guidedTutorialSeen) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function markGuidedTutorialSeen() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.guidedTutorialSeen, '1')
+  } catch {
+    // The current session can still continue when storage is unavailable.
+  }
 }
 
 export function loadNotificationTime() {
