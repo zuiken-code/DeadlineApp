@@ -541,6 +541,25 @@
 .settings-footnote.has-error { color: #b33b3b; }
 .settings-future-note { margin: 4px 13px 0; color: var(--tertiary); font-size: 10px; line-height: 1.6; text-align: center; }
 
+.consent-layer {
+  position: fixed; z-index: 70; inset: 0; display: grid; place-items: end center; padding: 18px;
+  background: rgba(10, 21, 20, .44); backdrop-filter: blur(8px); animation: fade-in 180ms ease both;
+}
+.consent-dialog {
+  width: min(100%, 440px); padding: 24px; border: 1px solid rgba(255,255,255,.3); border-radius: 26px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(10, 36, 33, .28);
+  animation: sheet-up 280ms cubic-bezier(.2,.85,.25,1) both;
+}
+.consent-dialog h2 { margin: 5px 0 9px; font: inherit; font-size: 23px; font-weight: 760; letter-spacing: -.035em; }
+.consent-dialog > p { color: var(--secondary); font-size: 13px; line-height: 1.6; }
+.consent-summary { display: grid; gap: 1px; overflow: hidden; margin: 18px 0 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--line); }
+.consent-summary p { display: grid; gap: 3px; margin: 0; padding: 12px 14px; background: var(--grouped); }
+.consent-summary strong { font-size: 12px; }
+.consent-summary span { color: var(--secondary); font-size: 10px; line-height: 1.5; }
+.consent-dialog .consent-note { color: var(--tertiary); font-size: 10px; }
+.consent-actions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; margin-top: 19px; }
+.consent-actions .primary-button, .consent-actions .secondary-button { height: 48px; margin: 0; }
+
 .sheet-layer {
   position: fixed; z-index: 30; inset: 0; display: flex; justify-content: center; align-items: flex-end;
   padding: 0; background: rgba(10, 21, 20, .3); backdrop-filter: blur(3px); animation: fade-in 180ms ease both;
@@ -577,6 +596,7 @@
 .page-range-summary p { margin: 0; font-size: 10px; line-height: 1.45; }
 .page-range-summary.has-error { background: rgba(217, 75, 75, .08); color: #b33b3b; }
 .page-range-summary .sheet-form-error { color: #b33b3b; font-weight: 700; }
+.sheet-form-error { margin: 0; color: #b33b3b; font-size: 11px; font-weight: 700; line-height: 1.5; }
 
 .primary-button {
   width: 100%; height: 54px; margin-top: 4px; border: 0; border-radius: 16px;
@@ -716,6 +736,7 @@
   .bottom-nav { bottom: 28px; border-radius: 0 0 32px 32px; }
   .sheet { margin-bottom: 28px; border-radius: 28px; }
   .tutorial-sheet { margin-bottom: 28px; border-radius: 28px; }
+  .consent-layer { place-items: center; }
   .lists { grid-template-columns: minmax(0, 1fr); gap: 0; align-items: start; }
   .swipe-item { display: block; background: transparent; }
   .swipe-item .list-item { width: 100%; transform: none !important; }

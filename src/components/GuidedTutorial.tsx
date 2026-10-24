@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 
 type GuidedTutorialProps = {
   onClose: () => void
+  onComplete: () => void
 }
 
 type GuideStep = {
@@ -43,7 +44,7 @@ type Position = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-export function GuidedTutorial({ onClose }: GuidedTutorialProps) {
+export function GuidedTutorial({ onClose, onComplete }: GuidedTutorialProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
   const [position, setPosition] = useState<Position>({ top: 0, left: 16, arrowLeft: 40, placement: 'below' })
@@ -138,7 +139,7 @@ export function GuidedTutorial({ onClose }: GuidedTutorialProps) {
           <button type="button" className="guided-tutorial-skip" onClick={onClose}>スキップ</button>
           <div className="guided-tutorial-navigation">
             {stepIndex > 0 && <button type="button" className="guided-tutorial-back" onClick={() => setStepIndex((current) => current - 1)}>戻る</button>}
-            <button type="button" className="guided-tutorial-next" onClick={() => (isLastStep ? onClose() : setStepIndex((current) => current + 1))}>
+            <button type="button" className="guided-tutorial-next" onClick={() => (isLastStep ? onComplete() : setStepIndex((current) => current + 1))}>
               {isLastStep ? '完了' : '次へ'} <span aria-hidden="true">→</span>
             </button>
           </div>

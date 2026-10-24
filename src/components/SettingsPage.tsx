@@ -1,13 +1,16 @@
 import { BellIcon, ChevronIcon, HelpIcon, InfoIcon } from './Icons'
+import type { AnalyticsConsent } from '../data/analytics'
 import type { PushStatus } from '../data/pushNotifications'
 
 type SettingsPageProps = {
   notificationTime: string
   pushStatus: PushStatus
   pushMessage: string
+  analyticsConsent: AnalyticsConsent
   hasGoal: boolean
   onNotificationTimeChange: (value: string) => void
   onToggleNotifications: () => void
+  onAnalyticsConsentChange: (enabled: boolean) => void
   onOpenTutorial: () => void
 }
 
@@ -29,15 +32,18 @@ export function SettingsPage({
   notificationTime,
   pushStatus,
   pushMessage,
+  analyticsConsent,
   hasGoal,
   onNotificationTimeChange,
   onToggleNotifications,
+  onAnalyticsConsentChange,
   onOpenTutorial,
 }: SettingsPageProps) {
   const [hour, minute] = notificationTime.split(':')
   const isEnabled = pushStatus === 'enabled'
   const isBusy = pushStatus === 'loading' || pushStatus === 'busy'
   const cannotToggle = pushStatus === 'unsupported' || pushStatus === 'unavailable' || pushStatus === 'denied'
+  const analyticsEnabled = analyticsConsent === 'granted'
 
   return (
     <section className="settings-page" aria-labelledby="settings-title">
@@ -105,6 +111,31 @@ export function SettingsPage({
         </p>
       </section>
 
+      <section className="settings-section" aria-labelledby="privacy-settings-title">
+        <h2 id="privacy-settings-title">プライバシー</h2>
+        <div className="settings-group">
+          <div className="settings-row settings-toggle-row">
+            <span className="settings-icon"><InfoIcon /></span>
+            <span className="settings-row-copy">
+              <strong>利用状況の共有</strong>
+              <small>匿名化した操作データをアプリ改善に利用</small>
+            </span>
+            <span className={`settings-status ${analyticsEnabled ? 'status-enabled' : ''}`}>{analyticsEnabled ? 'オン' : 'オフ'}</span>
+            <button
+              type="button"
+              className="setting-switch"
+              role="switch"
+              aria-checked={analyticsEnabled}
+              aria-label="Google Analyticsによる利用状況の共有"
+              onClick={() => onAnalyticsConsentChange(!analyticsEnabled)}
+            >
+              <span />
+            </button>
+          </div>
+        </div>
+        <p className="settings-footnote">Google Analyticsへ目標名、TODO本文、ページ番号、正確な期限は送信しません。オフにすると以後の計測を停止します。</p>
+      </section>
+
       <section className="settings-section" aria-labelledby="support-settings-title">
         <h2 id="support-settings-title">サポート</h2>
         <div className="settings-group">
@@ -124,7 +155,7 @@ export function SettingsPage({
         </div>
       </section>
 
-      <p className="settings-future-note">アカウント、利用規約、プライバシー設定は今後ここへ追加できます。</p>
+      <p className="settings-future-note">アカウント、利用規約などの設定は今後ここへ追加できます。</p>
     </section>
   )
 }

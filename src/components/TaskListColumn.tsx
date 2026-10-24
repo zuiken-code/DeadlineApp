@@ -12,6 +12,7 @@ type TaskListColumnProps = {
   onDelete?: (kind: ListKind, id: number) => void;
   onEdit: (id: number) => void;
   onCurrentPageChange: (id: number, value: number | null) => void;
+  onCurrentPageCommit: (id: number, previousValue: number | null, value: number | null) => void;
 };
 
 const content = {
@@ -37,6 +38,7 @@ export function TaskListColumn({
   onDelete,
   onEdit,
   onCurrentPageChange,
+  onCurrentPageCommit,
 }: TaskListColumnProps) {
   const labels = content[kind];
   const completedCount = items.filter((item) => item.completed).length;
@@ -57,7 +59,7 @@ export function TaskListColumn({
       <div className="items">
         {items.length === 0 && <p className="empty">{labels.empty}</p>}
         {items.map((item) => (
-          <SwipeableListItem key={item.id} item={item} kind={kind} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onCurrentPageChange={onCurrentPageChange} />
+          <SwipeableListItem key={item.id} item={item} kind={kind} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onCurrentPageChange={onCurrentPageChange} onCurrentPageCommit={onCurrentPageCommit} />
         ))}
       </div>
       <button className="add-row" data-tour="todo-add" onClick={() => onAdd(kind)}>
@@ -75,9 +77,10 @@ type SwipeableListItemProps = {
   onDelete?: (kind: ListKind, id: number) => void;
   onEdit: (id: number) => void;
   onCurrentPageChange: (id: number, value: number | null) => void;
+  onCurrentPageCommit: (id: number, previousValue: number | null, value: number | null) => void;
 };
 
-function SwipeableListItem({ item, kind, onToggle, onDelete, onEdit, onCurrentPageChange }: SwipeableListItemProps) {
+function SwipeableListItem({ item, kind, onToggle, onDelete, onEdit, onCurrentPageChange, onCurrentPageCommit }: SwipeableListItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const startX = useRef<number | null>(null);
   const suppressClick = useRef(false);
@@ -149,7 +152,7 @@ function SwipeableListItem({ item, kind, onToggle, onDelete, onEdit, onCurrentPa
             <button type="button" className="task-edit-button" onClick={() => onEdit(item.id)} aria-label={`${item.title}を編集`} data-tour="todo-edit"><EditIcon /></button>
           </div>
           {item.pageProgress ? (
-            <CurrentPageInput item={item} pageProgress={item.pageProgress} onChange={onCurrentPageChange} />
+            <CurrentPageInput item={item} pageProgress={item.pageProgress} onChange={onCurrentPageChange} onCommit={onCurrentPageCommit} />
           ) : (
             <button type="button" className="page-setup-button" onClick={() => onEdit(item.id)}>ページ範囲を設定</button>
           )}
@@ -164,11 +167,13 @@ type CurrentPageInputProps = {
   item: ListItem;
   pageProgress: PageProgress;
   onChange: (id: number, value: number | null) => void;
+  onCommit: (id: number, previousValue: number | null, value: number | null) => void;
 };
 
-function CurrentPageInput({ item, pageProgress, onChange }: CurrentPageInputProps) {
+function CurrentPageInput({ item, pageProgress, onChange, onCommit }: CurrentPageInputProps) {
   const persistedDraft = pageProgress.currentPage == null ? '' : String(pageProgress.currentPage);
   const [editState, setEditState] = useState({ draft: persistedDraft, baseCurrentPage: pageProgress.currentPage });
+  const valueOnFocus = useRef<number | null>(pageProgress.currentPage);
   const draft = editState.baseCurrentPage === pageProgress.currentPage ? editState.draft : persistedDraft;
   const draftNumber = Number(draft);
   const invalid = draft !== '' && (!/^\d+$/.test(draft) || !Number.isSafeInteger(draftNumber) || draftNumber < pageProgress.startPage || draftNumber > pageProgress.endPage);
@@ -186,8 +191,12 @@ function CurrentPageInput({ item, pageProgress, onChange }: CurrentPageInputProp
   };
 
   const handleBlur = () => {
-    if (!invalid) return;
-    setEditState({ draft: persistedDraft, baseCurrentPage: pageProgress.currentPage });
+    if (invalid) {
+      setEditState({ draft: persistedDraft, baseCurrentPage: pageProgress.currentPage });
+      return;
+    }
+    const next = draft === '' ? null : Number(draft);
+    if (valueOnFocus.current !== next) onCommit(item.id, valueOnFocus.current, next);
   };
 
   return (
@@ -197,8 +206,10 @@ function CurrentPageInput({ item, pageProgress, onChange }: CurrentPageInputProp
         inputMode="numeric"
         pattern="[0-9]*"
         value={draft}
+        onFocus={() => { valueOnFocus.current = pageProgress.currentPage; }}
         onChange={(event) => handleChange(event.target.value)}
         onBlur={handleBlur}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
         aria-label={`${item.title}の現在ページ、${pageProgress.startPage}から${pageProgress.endPage}まで`}
         aria-invalid={invalid}
         placeholder="—"

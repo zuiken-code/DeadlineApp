@@ -7,11 +7,12 @@ type TodoEditSheetProps = {
   item: ListItem
   onSave: (id: number, title: string, pageProgress: PageProgress) => void
   onClose: () => void
+  errorMessage?: string
 }
 
 const isPositiveInteger = (value: string) => /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) >= 1
 
-export function TodoEditSheet({ item, onSave, onClose }: TodoEditSheetProps) {
+export function TodoEditSheet({ item, onSave, onClose, errorMessage }: TodoEditSheetProps) {
   const [title, setTitle] = useState(item.title)
   const [startPage, setStartPage] = useState(item.pageProgress ? String(item.pageProgress.startPage) : '1')
   const [endPage, setEndPage] = useState(item.pageProgress ? String(item.pageProgress.endPage) : '')
@@ -93,6 +94,7 @@ export function TodoEditSheet({ item, onSave, onClose }: TodoEditSheetProps) {
             {showValidation && hasValidRange && hasValidCurrent && <p className="sheet-form-error">{validationMessage}</p>}
           </div>
 
+          {errorMessage && <p className="sheet-form-error" role="alert">{errorMessage}</p>}
           <button className="primary-button" type="submit" disabled={!canSave}>保存する</button>
         </form>
       </section>
