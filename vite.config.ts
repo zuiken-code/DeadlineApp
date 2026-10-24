@@ -2,22 +2,24 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/DeadlineApp/' : '/',
+// Cloudflare Pages serves from /; GitHub Pages passes /DeadlineApp/ at build time.
+const base = process.env.DEPLOY_BASE_PATH || '/'
+
+export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeManifestIcons: false,
       manifest: {
-        id: '/DeadlineApp/',
+        id: base,
         name: '期限くん',
         short_name: '期限くん',
         description: '期限から逆算して、TODOと毎日の習慣を整えるアプリ',
         lang: 'ja',
-        start_url: '/DeadlineApp/',
-        scope: '/DeadlineApp/',
+        start_url: base,
+        scope: base,
         display: 'standalone',
         orientation: 'portrait-primary',
         theme_color: '#26A79A',
@@ -52,4 +54,4 @@ export default defineConfig(({ command }) => ({
       devOptions: { enabled: false },
     }),
   ],
-}))
+})

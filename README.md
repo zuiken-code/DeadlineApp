@@ -59,6 +59,7 @@ Appleの[Human Interface Guidelines](https://developer.apple.com/jp/design/human
 - Oxlint
 - GitHub Actions
 - GitHub Pages
+- Cloudflare Pages
 
 ## ローカル開発
 
@@ -108,7 +109,9 @@ public/               PWAアイコンなどの静的ファイル
 
 ## デプロイ
 
-`main`へのpushをきっかけにGitHub Actionsが本番ビルドを作成し、GitHub Pagesへ自動デプロイします。
+Cloudflare PagesでGitリポジトリを接続する場合は、Production branchを`main`、Build commandを`npm run build`、Build output directoryを`dist`に設定します。Root directoryはリポジトリのルートです。Cloudflare Pagesでは環境変数`DEPLOY_BASE_PATH`を設定しません。これでJavaScript・マニフェスト・PWAの起動URLはサイトのルート`/`を参照します。設定値は[Cloudflare PagesのVite向けビルド設定](https://developers.cloudflare.com/pages/configuration/build-configuration/)に合わせています。
+
+GitHub Pagesへの既存の自動デプロイも維持します。GitHub Actionsのビルド時だけ`DEPLOY_BASE_PATH=/DeadlineApp/`を指定し、リポジトリのサブパスに合わせます。どちらも`main`へのpushで再ビルドされます。Cloudflareでの最初のデプロイ後は、ページ本体に加えて`/assets/`配下のJSと`/manifest.webmanifest`が正しい形式で返ることを確認してください。公開URLが確定したら、上部の「公開版」リンクをCloudflareのURLへ更新します。
 
 通常の開発フローは次のとおりです。
 
@@ -116,7 +119,7 @@ public/               PWAアイコンなどの静的ファイル
 2. 実装後に`npm run lint`と`npm run build`を実行
 3. Pull Requestを作成
 4. `main`へマージ
-5. GitHub Actionsで自動デプロイ
+5. Cloudflare PagesとGitHub Actionsで自動デプロイ
 
 ## 今後の開発・公開計画（提案）
 

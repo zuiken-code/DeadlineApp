@@ -35,6 +35,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          DEPLOY_BASE_PATH: /DeadlineApp/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
