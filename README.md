@@ -59,6 +59,7 @@ Appleの[Human Interface Guidelines](https://developer.apple.com/jp/design/human
 - Oxlint
 - GitHub Actions
 - GitHub Pages
+- Cloudflare Workers Static Assets
 
 ## ローカル開発
 
@@ -108,7 +109,9 @@ public/               PWAアイコンなどの静的ファイル
 
 ## デプロイ
 
-`main`へのpushをきっかけにGitHub Actionsが本番ビルドを作成し、GitHub Pagesへ自動デプロイします。
+Cloudflare WorkersのGit連携では、Production branchを`main`、Build commandを`npm run build`、Deploy commandを`npm run deploy:worker`に設定します。`wrangler.jsonc`は既存Worker名`deadlineapp`で`dist`をStatic Assetsとして配信するため、公開URLは`https://deadlineapp.zuiken2022robo.workers.dev/`のルートで動作します。Cloudflare側では環境変数`DEPLOY_BASE_PATH`を設定しません。これにより、JavaScript・マニフェスト・PWAの起動URLはすべて`/`を参照します。[Workers Buildsの設定](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)と[Static Assets](https://developers.cloudflare.com/workers/static-assets/)に沿った構成です。
+
+GitHub Pagesへの既存の自動デプロイも維持します。GitHub Actionsのビルド時だけ`DEPLOY_BASE_PATH=/DeadlineApp/`を指定し、リポジトリのサブパスに合わせます。Cloudflare WorkerとGitHub Pagesはいずれも`main`へのpushで再ビルドされます。Cloudflareでの最初のデプロイ後は、ページ本体に加えて`/assets/`配下のJSと`/manifest.webmanifest`が正しい形式で返ることを確認してください。
 
 通常の開発フローは次のとおりです。
 
@@ -116,7 +119,7 @@ public/               PWAアイコンなどの静的ファイル
 2. 実装後に`npm run lint`と`npm run build`を実行
 3. Pull Requestを作成
 4. `main`へマージ
-5. GitHub Actionsで自動デプロイ
+5. Cloudflare WorkersとGitHub Actionsで自動デプロイ
 
 ## 今後の開発・公開計画（提案）
 
