@@ -26,6 +26,22 @@ export function GoalIcon({ className }: IconProps) {
   return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M5 5h11l-2 3 2 3H5" /></svg>
 }
 
+export function SettingsIcon({ className }: IconProps) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.4a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8Z" /><path d="M19.1 13.1a7.7 7.7 0 0 0 0-2.2l2-1.5-2-3.4-2.5 1a8.8 8.8 0 0 0-1.9-1.1L14.4 3h-4.8l-.4 2.9A8.8 8.8 0 0 0 7.4 7L4.9 6l-2 3.4 2 1.5a7.7 7.7 0 0 0 0 2.2l-2 1.5 2 3.4 2.5-1a8.8 8.8 0 0 0 1.9 1.1l.4 2.9h4.8l.4-2.9a8.8 8.8 0 0 0 1.9-1.1l2.5 1 2-3.4-2.2-1.5Z" /></svg>
+}
+
+export function BellIcon({ className }: IconProps) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 5 2 6 2 6h-15s2-1 2-6ZM10 19h4" /></svg>
+}
+
+export function ChevronIcon({ className }: IconProps) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+}
+
+export function InfoIcon({ className }: IconProps) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 10.8v5M12 7.5h.01" /></svg>
+}
+
 export function HelpIcon({ className }: IconProps) {
   return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M9.6 9.3a2.5 2.5 0 1 1 4 2c-.9.7-1.6 1.1-1.6 2.3M12 16.7h.01" /></svg>
 }

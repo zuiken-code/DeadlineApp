@@ -49,6 +49,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        importScripts: ['push-sw.js'],
         globPatterns: ['**/*.{js,css,html,svg,png}'],
       },
       devOptions: { enabled: false },

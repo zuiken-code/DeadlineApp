@@ -45,7 +45,7 @@ export function EditSheet({
           <form onSubmit={onUpdateGoal}>
             <label>
               <span>目標の名前</span>
-              <input autoFocus value={goalDraft.title} onChange={(event) => onGoalDraftChange({ ...goalDraft, title: event.target.value })} placeholder="例：資格試験に合格する" />
+              <input autoFocus maxLength={80} value={goalDraft.title} onChange={(event) => onGoalDraftChange({ ...goalDraft, title: event.target.value })} placeholder="例：資格試験に合格する" />
             </label>
             <label>
               <span>期限</span>

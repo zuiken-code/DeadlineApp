@@ -17,6 +17,7 @@ Appleの[Human Interface Guidelines](https://developer.apple.com/jp/design/human
 - 初めて使う人向けの使い方チュートリアル
 - localStorageによる端末内保存
 - PWAとしてホーム画面へ追加でき、アプリ本体はオフラインでも利用可能
+- 設定画面から通知時刻を選び、目標までの残り日数をWeb Pushで毎日通知
 
 ## 使い方
 
@@ -26,6 +27,7 @@ Appleの[Human Interface Guidelines](https://developer.apple.com/jp/design/human
 4. 一覧の「現在ページ」を更新すると、TODOと目標全体の達成度が自動計算されます。
 5. 完了したTODOにチェックを付けます。
 6. 不要なTODOは、スマートフォンでは右スワイプ、PCでは削除ボタンから削除します。
+7. 下部の「設定」から通知時刻を選び、期限リマインダーをオンにします。
 
 画面上部には、期限までの残り日数、休日数、TODO全体から算出した目標達成度が表示されます。
 
@@ -64,6 +66,7 @@ TODOの達成度 = round(完了ページ数 / 総ページ数 × 100)
 - GitHub Actions
 - GitHub Pages
 - Cloudflare Workers Static Assets
+- Cloudflare Workers Cron Triggers / KV / Web Push
 
 ## ローカル開発
 
@@ -102,12 +105,15 @@ src/
 └─ main.tsx           エントリーポイント
 
 public/               PWAアイコンなどの静的ファイル
+worker/               通知登録APIと定期配信Worker
 .github/workflows/    GitHub Pagesの自動デプロイ
 ```
 
 ## データとプライバシー
 
-目標、TODO、達成度はブラウザのlocalStorageに保存され、アプリのサーバーには送信されません。祝日数を計算する際のみ、対象年を指定して祝日APIへアクセスします。
+目標、TODO、達成度は通常ブラウザのlocalStorageに保存されます。祝日数を計算する際のみ、対象年を指定して祝日APIへアクセスします。
+
+期限リマインダーをオンにした場合に限り、Web Push配信に必要な購読情報、目標名、期限、通知時刻、端末のタイムゾーンをCloudflare KVへ保存します。TODO、ページ数、達成度は通知サーバーへ送りません。通知をオフにするとKVの登録情報を削除し、無効になった購読情報も配信時に自動削除します。
 
 ブラウザのサイトデータを削除すると、保存した目標とTODOも削除されます。現時点では端末間同期やバックアップ機能はありません。
 
@@ -124,6 +130,39 @@ GitHub Pagesへの既存の自動デプロイも維持します。GitHub Actions
 3. Pull Requestを作成
 4. `main`へマージ
 5. Cloudflare WorkersとGitHub Actionsで自動デプロイ
+
+### Web Push通知のCloudflare設定
+
+通知機能はコードのデプロイに加えて、Cloudflare Dashboardで次の初期設定が必要です。設定が終わるまではアプリ本体を通常どおり利用でき、設定画面の通知だけが「準備が必要」と表示されます。
+
+1. **KV Namespaceを作る**
+   - Cloudflare Dashboard → Storage & databases → KV → Create
+   - Namespace名の例：`DEADLINE_PUSH_SUBSCRIPTIONS`
+2. **WorkerへKVを接続する**
+   - Workers & Pages → `deadlineapp` → Settings → Bindings
+   - KV Namespace bindingを追加
+   - Variable name：`SUBSCRIPTIONS`（大文字を含めて完全一致）
+   - KV namespace：手順1で作成したもの
+3. **VAPID鍵を生成する**
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+4. **Workerへ変数とSecretを追加する**
+   - `VAPID_PUBLIC_KEY`：生成されたPublic Key（通常の変数）
+   - `VAPID_PRIVATE_KEY`：生成されたPrivate Key（Secretとして暗号化）
+   - `VAPID_SUBJECT`：`https://deadlineapp.zuiken2022robo.workers.dev`（通常の変数）
+5. **最新デプロイを確認する**
+   - `wrangler.jsonc`の`*/15 * * * *`によりCronが15分ごとに実行される
+   - Settings → TriggersでCron Triggerが作成されていることを確認
+   - 必要ならProductionを再デプロイ
+6. **実機で登録する**
+   - 目標と期限を設定
+   - 設定 → 期限リマインダーをオン
+   - Androidは通知を許可。iPhone/iPadはiOS 16.4以降でホーム画面へ追加したPWAから許可
+
+VAPID Private Keyはリポジトリ、Pull Request、通常の環境変数へ記載しません。鍵を再生成すると既存購読へ送信できなくなるため、漏えい時以外は同じ鍵を保持します。Cronは各購読のタイムゾーンと設定時刻を照合し、期限当日までは「残り0日」を含めて送信し、期限を過ぎた登録は削除します。OSの省電力設定やPushサービスの状態により、通知は設定時刻から遅れる場合があります。
 
 ## 今後の開発・公開計画（提案）
 

@@ -8,22 +8,33 @@ import { EditSheet } from './components/EditSheet'
 import { TodoEditSheet } from './components/TodoEditSheet'
 import { TutorialSheet } from './components/TutorialSheet'
 import { GuidedTutorial } from './components/GuidedTutorial'
+import { SettingsPage } from './components/SettingsPage'
 import type { SheetMode } from './components/EditSheet'
 import {
   formatDeadline,
   getDaysLeft,
   getTodoProgressPercentage,
   loadGoal,
+  loadNotificationTime,
   loadTodos,
   saveGoal,
   saveItems,
+  saveNotificationTime,
   toDateInputValue,
 } from './data/appStorage'
 import type { ListItem, ListKind, PageProgress } from './data/appStorage'
 import { getHolidayCount } from './data/holidayApi'
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  getPushStatus,
+  syncPushSubscription,
+} from './data/pushNotifications'
+import type { PushStatus } from './data/pushNotifications'
 import './App.css'
 
 function App() {
+  const [activePage, setActivePage] = useState<'home' | 'settings'>('home')
   const [todayKey] = useState(() => toDateInputValue(new Date()))
   const [goal, setGoal] = useState(loadGoal)
   const [todos, setTodos] = useState(loadTodos)
@@ -35,6 +46,9 @@ function App() {
   const [guidedTutorialOpen, setGuidedTutorialOpen] = useState(false)
   const [holidayCount, setHolidayCount] = useState(0)
   const [holidayAvailable, setHolidayAvailable] = useState(true)
+  const [notificationTime, setNotificationTime] = useState(loadNotificationTime)
+  const [pushStatus, setPushStatus] = useState<PushStatus>('loading')
+  const [pushMessage, setPushMessage] = useState('')
 
   const deadlineText = useMemo(() => formatDeadline(goal.deadline), [goal.deadline])
   const daysLeft = useMemo(() => getDaysLeft(goal.deadline, todayKey), [goal.deadline, todayKey])
@@ -58,6 +72,15 @@ function App() {
     })
     return () => { cancelled = true }
   }, [goal.deadline, todayKey])
+
+  useEffect(() => {
+    if (activePage !== 'settings') return
+    let cancelled = false
+    getPushStatus().then((status) => {
+      if (!cancelled) setPushStatus(status)
+    })
+    return () => { cancelled = true }
+  }, [activePage])
 
   const updateItems = (kind: ListKind, update: (items: ListItem[]) => ListItem[]) => {
     if (kind !== 'todo') return
@@ -121,25 +144,89 @@ function App() {
     const next = { ...goalDraft, title: goalDraft.title.trim() }
     setGoal(next)
     saveGoal(next)
+    if (pushStatus === 'enabled') {
+      syncPushSubscription(next, notificationTime).catch(() => {
+        setPushStatus('error')
+        setPushMessage('目標は保存しましたが、通知内容を更新できませんでした。オンラインで再度お試しください。')
+      })
+    }
     closeSheet()
+  }
+
+  const toggleNotifications = async () => {
+    setPushStatus('busy')
+    setPushMessage('')
+    try {
+      if (pushStatus === 'enabled') {
+        await disablePushNotifications()
+        setPushStatus('disabled')
+        setPushMessage('通知をオフにし、サーバー上の通知情報を削除しました。')
+      } else {
+        await enablePushNotifications(goal, notificationTime)
+        setPushStatus('enabled')
+        setPushMessage(`毎日${notificationTime}ごろに通知します。`)
+      }
+    } catch (error) {
+      const denied = 'Notification' in window && Notification.permission === 'denied'
+      setPushStatus(denied ? 'denied' : 'error')
+      setPushMessage(error instanceof Error ? error.message : '通知設定を変更できませんでした。')
+    }
+  }
+
+  const updateNotificationTime = (value: string) => {
+    setNotificationTime(value)
+    saveNotificationTime(value)
+    if (pushStatus !== 'enabled') return
+
+    setPushStatus('busy')
+    setPushMessage('通知時刻を更新しています…')
+    syncPushSubscription(goal, value).then((synced) => {
+      setPushStatus(synced ? 'enabled' : 'disabled')
+      setPushMessage(synced ? `毎日${value}ごろに通知します。` : '通知が無効になっていたため、時刻だけ保存しました。')
+    }).catch((error) => {
+      setPushStatus('error')
+      setPushMessage(error instanceof Error ? error.message : '通知時刻を更新できませんでした。')
+    })
+  }
+
+  const navigate = (page: 'home' | 'settings') => {
+    if (page === 'settings') {
+      setPushStatus('loading')
+      setPushMessage('')
+    }
+    setActivePage(page)
   }
 
   return (
     <main className="app-shell">
       <div className="app-content">
-        <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
-        <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} goalProgress={goalProgress} onEditGoal={openGoal} />
-        <ActionLists
-          todos={todos}
-          onToggle={toggleItem}
-          onAdd={openAdd}
-          onDelete={deleteItem}
-          onEdit={setEditingTodoId}
-          onCurrentPageChange={updateTodoCurrentPage}
-        />
+        {activePage === 'home' ? (
+          <>
+            <AppHeader onEditGoal={openGoal} onOpenTutorial={() => setTutorialOpen(true)} />
+            <DeadlineCard goal={goal} deadlineText={deadlineText} daysLeft={daysLeft} holidayCount={holidayCount} holidayAvailable={holidayAvailable} goalProgress={goalProgress} onEditGoal={openGoal} />
+            <ActionLists
+              todos={todos}
+              onToggle={toggleItem}
+              onAdd={openAdd}
+              onDelete={deleteItem}
+              onEdit={setEditingTodoId}
+              onCurrentPageChange={updateTodoCurrentPage}
+            />
+          </>
+        ) : (
+          <SettingsPage
+            notificationTime={notificationTime}
+            pushStatus={pushStatus}
+            pushMessage={pushMessage}
+            hasGoal={Boolean(goal.title && goal.deadline)}
+            onNotificationTimeChange={updateNotificationTime}
+            onToggleNotifications={toggleNotifications}
+            onOpenTutorial={() => setTutorialOpen(true)}
+          />
+        )}
       </div>
 
-      <BottomNavigation onEditGoal={openGoal} />
+      <BottomNavigation activePage={activePage} onNavigate={navigate} />
 
       {sheet && (
         <EditSheet
@@ -166,6 +253,7 @@ function App() {
           onClose={() => setTutorialOpen(false)}
           onStartGuide={() => {
             setTutorialOpen(false)
+            setActivePage('home')
             setGuidedTutorialOpen(true)
           }}
         />

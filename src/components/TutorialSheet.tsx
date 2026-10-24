@@ -1,4 +1,4 @@
-import { CloseIcon, GoalIcon, HelpIcon, PlusIcon } from './Icons';
+import { BellIcon, CloseIcon, GoalIcon, HelpIcon, PlusIcon } from './Icons';
 
 type TutorialSheetProps = {
   onClose: () => void;
@@ -9,7 +9,7 @@ const steps = [
   {
     number: '01',
     title: '目標と期限を設定する',
-    body: 'まずは期限を決めたい目標を登録します。画面右上の「目標」から名前と期限を入力してください。',
+    body: 'まずは期限を決めたい目標を登録します。ホーム上部のカードから名前と期限を入力してください。',
     icon: GoalIcon,
   },
   {
@@ -32,6 +32,12 @@ const steps = [
   },
   {
     number: '05',
+    title: '毎日の通知を設定する',
+    body: '下部の「設定」から通知時刻を選び、期限リマインダーをオンにすると、毎日残り日数を確認できます。',
+    icon: BellIcon,
+  },
+  {
+    number: '06',
     title: '削除とオフライン利用',
     body: 'スマートフォンではTODOを右へスワイプして削除できます。左へ戻すとキャンセルできます。アプリ本体はオフラインでも利用できます。',
     icon: HelpIcon,
