@@ -12,7 +12,7 @@ export function BottomNavigation({ activePage, onNavigate }: BottomNavigationPro
         <HomeIcon />
         <span>ホーム</span>
       </button>
-      <button className={`nav-item${activePage === 'settings' ? ' active' : ''}`} aria-current={activePage === 'settings' ? 'page' : undefined} onClick={() => onNavigate('settings')}>
+      <button className={`nav-item${activePage === 'settings' ? ' active' : ''}`} data-tour="settings-tab" aria-current={activePage === 'settings' ? 'page' : undefined} onClick={() => onNavigate('settings')}>
         <SettingsIcon />
         <span>設定</span>
       </button>
