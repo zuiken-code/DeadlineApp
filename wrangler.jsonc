@@ -10,6 +10,13 @@
     "VAPID_SUBJECT": "https://deadlineapp.zuiken.workers.dev/"
   },
   "previews": {},
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true
+    }
+  },
   "triggers": {
     "crons": ["*/15 * * * *"]
   },
