@@ -4,6 +4,8 @@
 
 **公開中:** [https://deadlineapp.zuiken.workers.dev/](https://deadlineapp.zuiken.workers.dev/)
 
+リリースノート: [v0.1.0](docs/releases/v0.1.0.md)
+
 ## できること
 
 - 目標名と期限を設定し、残り日数・期間中の休日数・目標全体の達成度を表示
