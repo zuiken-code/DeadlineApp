@@ -628,6 +628,7 @@
 .sheet label small { margin-left: 4px; color: var(--tertiary); font: inherit; font-weight: 550; }
 .todo-edit-sheet { max-height: min(92svh, 760px); overflow-y: auto; overscroll-behavior: contain; }
 .page-range-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.range-unit-hint { margin: 0 0 16px; color: var(--secondary); font-size: 11px; line-height: 1.5; }
 .page-range-summary {
   min-height: 88px; padding: 14px; border-radius: 16px; background: var(--accent-pale);
   color: var(--secondary); display: grid; align-content: center; gap: 9px;

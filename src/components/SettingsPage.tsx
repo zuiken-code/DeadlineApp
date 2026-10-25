@@ -147,7 +147,7 @@ export function SettingsPage({
             </button>
           </div>
         </div>
-        <p className="settings-footnote">Google Analyticsへ目標名、TODO本文、ページ番号、正確な期限は送信しません。オフにすると以後の計測を停止します。</p>
+        <p className="settings-footnote">Google Analyticsへ目標名、TODO本文、入力した番号、正確な期限は送信しません。オフにすると以後の計測を停止します。</p>
       </section>
 
       <section className="settings-section" aria-labelledby="support-settings-title">
