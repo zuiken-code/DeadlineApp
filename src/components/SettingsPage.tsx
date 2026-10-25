@@ -6,10 +6,12 @@ type SettingsPageProps = {
   notificationTime: string
   pushStatus: PushStatus
   pushMessage: string
+  pushMessageIsError: boolean
   analyticsConsent: AnalyticsConsent
   hasGoal: boolean
   onNotificationTimeChange: (value: string) => void
   onToggleNotifications: () => void
+  onSendTestNotification: () => void
   onAnalyticsConsentChange: (enabled: boolean) => void
   onOpenTutorial: () => void
 }
@@ -32,10 +34,12 @@ export function SettingsPage({
   notificationTime,
   pushStatus,
   pushMessage,
+  pushMessageIsError,
   analyticsConsent,
   hasGoal,
   onNotificationTimeChange,
   onToggleNotifications,
+  onSendTestNotification,
   onAnalyticsConsentChange,
   onOpenTutorial,
 }: SettingsPageProps) {
@@ -105,8 +109,18 @@ export function SettingsPage({
               </label>
             </div>
           </div>
+          {isEnabled && (
+            <button type="button" className="settings-link-row" onClick={onSendTestNotification}>
+              <span className="settings-icon"><BellIcon /></span>
+              <span className="settings-row-copy">
+                <strong>テスト通知を送る</strong>
+                <small>実際のWeb Pushで届くか確認</small>
+              </span>
+              <ChevronIcon />
+            </button>
+          )}
         </div>
-        <p className={`settings-footnote${pushMessage && (pushStatus === 'error' || pushStatus === 'denied' || pushStatus === 'unavailable') ? ' has-error' : ''}`} aria-live="polite">
+        <p className={`settings-footnote${pushMessage && (pushMessageIsError || pushStatus === 'error' || pushStatus === 'denied' || pushStatus === 'unavailable') ? ' has-error' : ''}`} aria-live="polite">
           {pushMessage || '通知をオンにすると、目標名・期限・通知情報をCloudflareへ保存します。通知をオフにすると削除します。'}
         </p>
       </section>

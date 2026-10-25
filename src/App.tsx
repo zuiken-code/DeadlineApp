@@ -44,6 +44,7 @@ import {
   disablePushNotifications,
   enablePushNotifications,
   getPushStatus,
+  sendTestNotification,
   syncPushSubscription,
 } from './data/pushNotifications'
 import type { PushStatus } from './data/pushNotifications'
@@ -72,6 +73,7 @@ function App() {
   const [notificationTime, setNotificationTime] = useState(loadNotificationTime)
   const [pushStatus, setPushStatus] = useState<PushStatus>('loading')
   const [pushMessage, setPushMessage] = useState('')
+  const [pushMessageIsError, setPushMessageIsError] = useState(false)
   const [pushStatusCheckId, setPushStatusCheckId] = useState(0)
   const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(loadAnalyticsConsent)
   const [storageMessage, setStorageMessage] = useState('')
@@ -135,6 +137,7 @@ function App() {
       if (!cancelled && !pushOperationInProgress.current) {
         setPushStatus(result.status)
         setPushMessage(result.message ?? '')
+        setPushMessageIsError(result.status === 'unavailable' || result.status === 'denied')
       }
     })
     return () => { cancelled = true }
@@ -268,9 +271,11 @@ function App() {
   }
 
   const toggleNotifications = async () => {
+    if (pushOperationInProgress.current) return
     pushOperationInProgress.current = true
     setPushStatus('busy')
     setPushMessage('')
+    setPushMessageIsError(false)
     try {
       if (pushStatus === 'enabled') {
         await disablePushNotifications()
@@ -279,12 +284,33 @@ function App() {
       } else {
         await enablePushNotifications(goal, notificationTime)
         setPushStatus('enabled')
-        setPushMessage(`毎日${notificationTime}ごろに通知します。`)
+        setPushMessage(`テスト通知を送信しました。毎日${notificationTime}ごろに通知します。届かない場合は端末の通知設定と集中モードを確認してください。`)
       }
     } catch (error) {
       const denied = 'Notification' in window && Notification.permission === 'denied'
       setPushStatus(denied ? 'denied' : 'error')
       setPushMessage(error instanceof Error ? error.message : '通知設定を変更できませんでした。')
+      setPushMessageIsError(true)
+    } finally {
+      pushOperationInProgress.current = false
+    }
+  }
+
+  const testNotifications = async () => {
+    if (pushOperationInProgress.current) return
+    pushOperationInProgress.current = true
+    setPushStatus('busy')
+    setPushMessage('テスト通知を送信しています…')
+    setPushMessageIsError(false)
+    try {
+      await sendTestNotification(goal, notificationTime)
+      setPushStatus('enabled')
+      setPushMessage('テスト通知を送信しました。届かない場合は端末の通知設定と集中モードを確認してください。')
+    } catch (error) {
+      const status = await getPushStatus()
+      setPushStatus(status.status)
+      setPushMessage(error instanceof Error ? error.message : 'テスト通知を送れませんでした。')
+      setPushMessageIsError(true)
     } finally {
       pushOperationInProgress.current = false
     }
@@ -297,12 +323,14 @@ function App() {
 
     setPushStatus('busy')
     setPushMessage('通知時刻を更新しています…')
+    setPushMessageIsError(false)
     syncPushSubscription(goal, value).then((synced) => {
       setPushStatus(synced ? 'enabled' : 'disabled')
       setPushMessage(synced ? `毎日${value}ごろに通知します。` : '通知が無効になっていたため、時刻だけ保存しました。')
     }).catch((error) => {
       setPushStatus('error')
       setPushMessage(error instanceof Error ? error.message : '通知時刻を更新できませんでした。')
+      setPushMessageIsError(true)
     })
   }
 
@@ -310,6 +338,7 @@ function App() {
     if (page === 'settings') {
       setPushStatus('loading')
       setPushMessage('')
+      setPushMessageIsError(false)
       if (activePage === 'settings') {
         setPushStatusCheckId((current) => current + 1)
       }
@@ -370,10 +399,12 @@ function App() {
             notificationTime={notificationTime}
             pushStatus={pushStatus}
             pushMessage={pushMessage}
+            pushMessageIsError={pushMessageIsError}
             analyticsConsent={analyticsConsent}
             hasGoal={Boolean(goal.title && goal.deadline)}
             onNotificationTimeChange={updateNotificationTime}
             onToggleNotifications={toggleNotifications}
+            onSendTestNotification={testNotifications}
             onAnalyticsConsentChange={changeAnalyticsConsent}
             onOpenTutorial={() => setTutorialOpen(true)}
           />
