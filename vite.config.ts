@@ -1,12 +1,31 @@
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // Cloudflare Workers serves from /; GitHub Pages passes /DeadlineApp/ at build time.
 const base = process.env.DEPLOY_BASE_PATH || '/'
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
+const commit = (() => {
+  const commitFromEnvironment = process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA
+  if (commitFromEnvironment) return commitFromEnvironment.slice(0, 7)
+  try {
+    return execFileSync('git', ['-c', `safe.directory=${process.cwd()}`, 'rev-parse', '--short=7', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return ''
+  }
+})()
 
 export default defineConfig({
   base,
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __APP_COMMIT__: JSON.stringify(commit),
+  },
   plugins: [
     react(),
     VitePWA({

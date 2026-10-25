@@ -409,6 +409,9 @@ function App() {
             onOpenTutorial={() => setTutorialOpen(true)}
           />
         )}
+        <footer className="app-version">
+          v{__APP_VERSION__}{__APP_COMMIT__ && ` · ${__APP_COMMIT__}`}
+        </footer>
       </div>
 
       <BottomNavigation activePage={activePage} onNavigate={navigate} />
