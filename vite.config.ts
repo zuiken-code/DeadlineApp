@@ -35,7 +35,7 @@ export default defineConfig({
         id: base,
         name: '期限くん',
         short_name: '期限くん',
-        description: '期限から逆算して、TODOのページ進捗を管理するアプリ',
+        description: '期限から逆算して、TODOの進捗を管理するアプリ',
         lang: 'ja',
         start_url: base,
         scope: base,

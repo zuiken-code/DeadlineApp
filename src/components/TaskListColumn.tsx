@@ -154,7 +154,7 @@ function SwipeableListItem({ item, kind, onToggle, onDelete, onEdit, onCurrentPa
           {item.pageProgress ? (
             <CurrentPageInput item={item} pageProgress={item.pageProgress} onChange={onCurrentPageChange} onCommit={onCurrentPageCommit} />
           ) : (
-            <button type="button" className="page-setup-button" onClick={() => onEdit(item.id)}>ページ範囲を設定</button>
+            <button type="button" className="page-setup-button" onClick={() => onEdit(item.id)} aria-label={`${item.title}のページまたは問題番号の範囲を設定`}>範囲を設定</button>
           )}
         </div>
         <TaskProgressSummary item={item} />
@@ -210,24 +210,23 @@ function CurrentPageInput({ item, pageProgress, onChange, onCommit }: CurrentPag
         onChange={(event) => handleChange(event.target.value)}
         onBlur={handleBlur}
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-        aria-label={`${item.title}の現在ページ、${pageProgress.startPage}から${pageProgress.endPage}まで`}
+        aria-label={`${item.title}の現在の番号、${pageProgress.startPage}から${pageProgress.endPage}まで。ページや問題番号で入力できます`}
         aria-invalid={invalid}
         placeholder="—"
       />
-      <span>ページ</span>
     </label>
   );
 }
 
 function TaskProgressSummary({ item }: { item: ListItem }) {
   const percentage = getTodoProgressPercentage(item);
-  const pageLabel = item.pageProgress
-    ? `${getCompletedPageCount(item.pageProgress)}/${getPageCount(item.pageProgress)}ページ`
-    : 'ページ未設定';
+  const rangeLabel = item.pageProgress
+    ? `${getCompletedPageCount(item.pageProgress)}/${getPageCount(item.pageProgress)}`
+    : '範囲未設定';
 
   return (
-    <div className="task-progress-summary" aria-label={`${item.title}の達成率 ${percentage}%、${pageLabel}`}>
-      <div className="task-progress-header"><strong>{percentage}%</strong><span>{pageLabel}</span></div>
+    <div className="task-progress-summary" aria-label={`${item.title}の達成率 ${percentage}%、${rangeLabel}`}>
+      <div className="task-progress-header"><strong>{percentage}%</strong><span>{rangeLabel}</span></div>
       <div className="progress-track" aria-hidden="true"><span style={{ width: `${percentage}%` }} /></div>
       {item.pageProgress && <small>{item.pageProgress.startPage}〜{item.pageProgress.endPage}</small>}
     </div>
