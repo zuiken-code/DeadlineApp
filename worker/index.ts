@@ -257,13 +257,12 @@ type NotificationData = {
   tag: string
 }
 
-async function sendPush(subscription: WebPushSubscription, data: NotificationData, env: Env, urgency: 'normal' | 'high', topic?: string) {
+async function sendPush(subscription: WebPushSubscription, data: NotificationData, env: Env, urgency: 'normal' | 'high') {
   const payload = await buildPushPayload({
     data,
     options: {
       ttl: 60 * 60 * 6,
       urgency,
-      ...(topic ? { topic } : {}),
     },
   }, subscription, {
     subject: env.VAPID_SUBJECT || 'https://deadlineapp.zuiken.workers.dev/',
@@ -292,7 +291,7 @@ async function sendNotification(key: string, today: string, env: Env) {
       badge: 'pwa-192x192.png',
       url: './',
       tag: `deadline-${today}`,
-    }, env, 'normal', `deadline-${today.replaceAll('-', '')}`)
+    }, env, 'normal')
     if (response.status === 404 || response.status === 410) {
       await env.SUBSCRIPTIONS.delete(key)
     } else if (!response.ok) {

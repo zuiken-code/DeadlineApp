@@ -197,6 +197,8 @@
 }
 
 .app-shell {
+  display: flex;
+  flex-direction: column;
   width: min(100%, 480px);
   min-height: 100svh;
   margin: 0 auto;
@@ -206,7 +208,21 @@
   position: relative;
 }
 
-.app-content { padding: max(18px, env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom)); }
+.app-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: max(18px, env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom));
+}
+
+.app-version {
+  margin-top: auto;
+  padding-top: 24px;
+  color: var(--tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
 
 .topbar {
   min-height: 58px;
