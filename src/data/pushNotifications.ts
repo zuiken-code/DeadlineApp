@@ -14,7 +14,7 @@ type PushConfig = {
 }
 
 const API_ROOT = `${import.meta.env.BASE_URL}api/push`
-const SERVICE_WORKER_TIMEOUT = 5000
+const SERVICE_WORKER_TIMEOUT = 12000
 const API_TIMEOUT = 10000
 
 function supportsPushNotifications() {
@@ -24,6 +24,19 @@ function supportsPushNotifications() {
     && 'Notification' in window
 }
 
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function needsHomeScreenApp() {
+  return isIOS()
+    && !window.matchMedia('(display-mode: standalone)').matches
+    && (navigator as Navigator & { standalone?: boolean }).standalone !== true
+}
+
+const INSTALL_MESSAGE = 'iPhone・iPadで通知を使うには、Safariの共有メニューから「ホーム画面に追加」し、追加したアイコンからアプリを開いてください。'
+
 function urlBase64ToUint8Array(value: string) {
   const padding = '='.repeat((4 - value.length % 4) % 4)
   const base64 = (value + padding).replaceAll('-', '+').replaceAll('_', '/')
@@ -31,16 +44,26 @@ function urlBase64ToUint8Array(value: string) {
   return Uint8Array.from(bytes, (character) => character.charCodeAt(0))
 }
 
-async function getServiceWorkerRegistration() {
-  const existing = await navigator.serviceWorker.getRegistration()
-  if (existing) return existing
+function usesPublicKey(subscription: PushSubscription, publicKey: string) {
+  const currentKey = subscription.options.applicationServerKey
+  if (!currentKey) return true
+  const expected = urlBase64ToUint8Array(publicKey)
+  const current = new Uint8Array(currentKey)
+  return current.length === expected.length && current.every((value, index) => value === expected[index])
+}
 
-  return Promise.race([
-    navigator.serviceWorker.ready,
-    new Promise<never>((_, reject) => {
-      window.setTimeout(() => reject(new Error('Service Workerを準備できませんでした。')), SERVICE_WORKER_TIMEOUT)
-    }),
-  ])
+async function getServiceWorkerRegistration() {
+  let timer: number | undefined
+  try {
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error('Service Workerを準備できませんでした。アプリを開き直して再度お試しください。')), SERVICE_WORKER_TIMEOUT)
+      }),
+    ])
+  } finally {
+    window.clearTimeout(timer)
+  }
 }
 
 async function fetchConfig() {
@@ -70,7 +93,7 @@ async function fetchConfig() {
   return data.publicKey
 }
 
-async function saveSubscription(subscription: PushSubscription, goal: Goal, notificationTime: string) {
+async function saveSubscription(subscription: PushSubscription, goal: Goal, notificationTime: string, sendTest = false) {
   const response = await fetch(`${API_ROOT}/subscription`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -79,10 +102,14 @@ async function saveSubscription(subscription: PushSubscription, goal: Goal, noti
       goal,
       notificationTime,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tokyo',
+      sendTest,
     }),
   })
   const result = await response.json().catch(() => ({})) as { error?: string }
-  if (!response.ok) throw new Error(result.error || '通知設定を保存できませんでした。')
+  if (!response.ok) {
+    if (response.status === 410) await subscription.unsubscribe().catch(() => false)
+    throw new Error(result.error || '通知設定を保存できませんでした。')
+  }
 }
 
 export function isValidNotificationTime(value: string) {
@@ -90,6 +117,9 @@ export function isValidNotificationTime(value: string) {
 }
 
 export async function getPushStatus(): Promise<PushStatusCheck> {
+  if (needsHomeScreenApp()) {
+    return { status: 'unavailable', message: INSTALL_MESSAGE }
+  }
   if (!supportsPushNotifications()) {
     return {
       status: 'unsupported',
@@ -99,15 +129,18 @@ export async function getPushStatus(): Promise<PushStatusCheck> {
   if (Notification.permission === 'denied') {
     return {
       status: 'denied',
-      message: '通知がブロックされています。ブラウザまたはWindowsの設定から期限くんの通知を許可してください。',
+      message: '通知がブロックされています。端末の通知設定から期限くんを許可してください。',
     }
   }
 
   try {
     const registration = await getServiceWorkerRegistration()
     const subscription = await registration.pushManager.getSubscription()
-    if (subscription) return { status: 'enabled' }
-    await fetchConfig()
+    const publicKey = await fetchConfig()
+    if (subscription && Notification.permission === 'granted') {
+      if (usesPublicKey(subscription, publicKey)) return { status: 'enabled' }
+      return { status: 'disabled', message: '通知の認証鍵が更新されています。通知をオンにして登録を更新してください。' }
+    }
     return { status: 'disabled' }
   } catch (error) {
     return {
@@ -118,6 +151,7 @@ export async function getPushStatus(): Promise<PushStatusCheck> {
 }
 
 export async function enablePushNotifications(goal: Goal, notificationTime: string) {
+  if (needsHomeScreenApp()) throw new Error(INSTALL_MESSAGE)
   if (!supportsPushNotifications()) throw new Error('この端末またはブラウザはWeb Push通知に対応していません。')
   if (!goal.title || !goal.deadline) throw new Error('先にホームで目標と期限を設定してください。')
   if (!isValidNotificationTime(notificationTime)) throw new Error('通知時刻は15分単位で設定してください。')
@@ -129,18 +163,41 @@ export async function enablePushNotifications(goal: Goal, notificationTime: stri
 
   const publicKey = await fetchConfig()
   const registration = await getServiceWorkerRegistration()
-  const existing = await registration.pushManager.getSubscription()
+  let existing = await registration.pushManager.getSubscription()
+  if (existing && !usesPublicKey(existing, publicKey)) {
+    await existing.unsubscribe()
+    existing = null
+  }
   const subscription = existing ?? await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(publicKey),
   })
 
   try {
-    await saveSubscription(subscription, goal, notificationTime)
+    await saveSubscription(subscription, goal, notificationTime, true)
   } catch (error) {
     if (!existing) await subscription.unsubscribe().catch(() => false)
     throw error
   }
+}
+
+export async function sendTestNotification(goal: Goal, notificationTime: string) {
+  if (needsHomeScreenApp()) throw new Error(INSTALL_MESSAGE)
+  if (!supportsPushNotifications() || Notification.permission !== 'granted') {
+    throw new Error('通知が許可されていません。端末の通知設定を確認してください。')
+  }
+  const registration = await getServiceWorkerRegistration()
+  const publicKey = await fetchConfig()
+  let subscription = await registration.pushManager.getSubscription()
+  if (!subscription) throw new Error('通知登録が見つかりません。いったん通知をオフにして、再度オンにしてください。')
+  if (!usesPublicKey(subscription, publicKey)) {
+    await subscription.unsubscribe()
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    })
+  }
+  await saveSubscription(subscription, goal, notificationTime, true)
 }
 
 export async function syncPushSubscription(goal: Goal, notificationTime: string) {

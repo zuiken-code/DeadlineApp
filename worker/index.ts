@@ -126,8 +126,10 @@ async function registerSubscription(request: Request, env: Env) {
   if (!isConfigured(env) || !env.SUBSCRIPTIONS) return json({ error: '通知サーバーの準備が完了していません。' }, 503)
 
   try {
-    const subscription = parseStoredSubscription(await readJson(request))
+    const input = await readJson(request)
+    const subscription = parseStoredSubscription(input)
     if (!subscription) return json({ error: '通知設定の内容が正しくありません。' }, 400)
+    const sendTest = Boolean(input && typeof input === 'object' && (input as { sendTest?: unknown }).sendTest === true)
 
     const key = await subscriptionKey(subscription.subscription.endpoint)
     const expiration = Math.max(
@@ -143,6 +145,35 @@ async function registerSubscription(request: Request, env: Env) {
         deadline: subscription.goal.deadline,
       } satisfies SubscriptionMetadata,
     })
+
+    if (sendTest) {
+      try {
+        const today = getZonedDateTime(Date.now(), subscription.timeZone).date
+        const remainingDays = Math.max(0, calendarDaysBetween(today, subscription.goal.deadline))
+        const response = await sendPush(subscription.subscription, {
+          title: '期限くん',
+          body: `${subscription.goal.title}まで残り${remainingDays}日！がんばろう`,
+          icon: 'pwa-192x192.png',
+          badge: 'pwa-192x192.png',
+          url: './',
+          tag: `deadline-test-${Date.now()}`,
+        }, env, 'high')
+        if (!response.ok) {
+          console.error(`Test push rejected: ${response.status} ${await response.text()}`)
+          if (response.status === 404 || response.status === 410) {
+            await env.SUBSCRIPTIONS.delete(key)
+            return json({ error: '通知先の登録が期限切れです。もう一度通知をオンにしてください。' }, 410)
+          }
+          const detail = response.status === 401 || response.status === 403
+            ? '通知の認証に失敗しました。VAPID鍵の設定を確認してください。'
+            : `通知サービスへの送信に失敗しました（HTTP ${response.status}）。`
+          return json({ error: detail }, 502)
+        }
+      } catch (error) {
+        console.error('Test push failed', error)
+        return json({ error: 'テスト通知を送れませんでした。通信状態を確認して再度お試しください。' }, 502)
+      }
+    }
 
     return json({ success: true })
   } catch (error) {
@@ -217,6 +248,31 @@ function calendarDaysBetween(from: string, to: string) {
   )
 }
 
+type NotificationData = {
+  title: string
+  body: string
+  icon: string
+  badge: string
+  url: string
+  tag: string
+}
+
+async function sendPush(subscription: WebPushSubscription, data: NotificationData, env: Env, urgency: 'normal' | 'high', topic?: string) {
+  const payload = await buildPushPayload({
+    data,
+    options: {
+      ttl: 60 * 60 * 6,
+      urgency,
+      ...(topic ? { topic } : {}),
+    },
+  }, subscription, {
+    subject: env.VAPID_SUBJECT || 'https://deadlineapp.zuiken.workers.dev/',
+    publicKey: env.VAPID_PUBLIC_KEY!,
+    privateKey: env.VAPID_PRIVATE_KEY!,
+  })
+  return fetch(subscription.endpoint, payload)
+}
+
 async function sendNotification(key: string, today: string, env: Env) {
   if (!env.SUBSCRIPTIONS || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return
   const stored = await env.SUBSCRIPTIONS.get<StoredSubscription>(key, 'json')
@@ -229,31 +285,18 @@ async function sendNotification(key: string, today: string, env: Env) {
   }
 
   try {
-    const payload = await buildPushPayload({
-      data: {
-        title: '期限くん',
-        body: `${stored.goal.title}まで残り${remainingDays}日！がんばろう`,
-        icon: 'pwa-192x192.png',
-        badge: 'pwa-192x192.png',
-        url: './',
-        tag: `deadline-${today}`,
-      },
-      options: {
-        ttl: 60 * 60 * 6,
-        urgency: 'normal',
-        topic: `deadline-${today.replaceAll('-', '')}`,
-      },
-    }, stored.subscription, {
-      subject: env.VAPID_SUBJECT || 'https://deadlineapp.zuiken2022robo.workers.dev',
-      publicKey: env.VAPID_PUBLIC_KEY,
-      privateKey: env.VAPID_PRIVATE_KEY,
-    })
-
-    const response = await fetch(stored.subscription.endpoint, payload)
+    const response = await sendPush(stored.subscription, {
+      title: '期限くん',
+      body: `${stored.goal.title}まで残り${remainingDays}日！がんばろう`,
+      icon: 'pwa-192x192.png',
+      badge: 'pwa-192x192.png',
+      url: './',
+      tag: `deadline-${today}`,
+    }, env, 'normal', `deadline-${today.replaceAll('-', '')}`)
     if (response.status === 404 || response.status === 410) {
       await env.SUBSCRIPTIONS.delete(key)
     } else if (!response.ok) {
-      console.error(`Push delivery failed: ${response.status}`)
+      console.error(`Push delivery failed: ${response.status} ${await response.text()}`)
     }
   } catch (error) {
     console.error('Push delivery failed', error)
