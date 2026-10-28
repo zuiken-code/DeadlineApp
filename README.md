@@ -89,3 +89,9 @@ npm run dev
 通知には`SUBSCRIPTIONS`というKVバインディング、`VAPID_PUBLIC_KEY`、Secretの`VAPID_PRIVATE_KEY`、`VAPID_SUBJECT`が必要です。公開鍵とKV IDは`wrangler.jsonc`に設定済みで、秘密鍵はCloudflare側にだけ保存します。Cronは15分ごとに起動し、登録されたタイムゾーンと通知時刻が一致した購読に送信します。通知時刻は`00`・`15`・`30`・`45`分から選べます。
 
 Workers Logsは`wrangler.jsonc`で有効化済みです。配信を調べる際はCloudflareの**Workers & Pages → deadlineapp → Observability**でCron実行とエラーを確認できます。通知のテスト送信はアプリの設定画面から行えます。
+
+## Google検索への掲載
+
+公開版の`index.html`には説明文、正規URL、サイト名の構造化データを設定しています。`/robots.txt`から`/sitemap.xml`を案内し、サイトマップには公開URLのみを載せています。Xなどへの共有時は、公開版のアプリアイコンと紹介文を表示します。
+
+デプロイ後、運営者が[Google Search Console](https://search.google.com/search-console/)で`https://deadlineapp.zuiken.workers.dev/`をURLプレフィックスとして登録し、所有権を確認してください。その後、サイトマップに`https://deadlineapp.zuiken.workers.dev/sitemap.xml`を送信し、トップページをURL検査で確認します。所有権確認に必要なHTMLファイルやメタタグは、Search Consoleが発行するものを追加する必要があります。サイトマップ送信やメタデータの設定だけで、検索結果への掲載・順位は保証されません。
