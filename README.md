@@ -86,9 +86,11 @@ npm run dev
 | Assets | `dist`（`wrangler.jsonc`で指定） |
 | `DEPLOY_BASE_PATH` | 設定しない（公開URLのルート`/`を使用） |
 
-通知には`SUBSCRIPTIONS`というKVバインディング、`VAPID_PUBLIC_KEY`、Secretの`VAPID_PRIVATE_KEY`、`VAPID_SUBJECT`が必要です。公開鍵とKV IDは`wrangler.jsonc`に設定済みで、秘密鍵はCloudflare側にだけ保存します。Cronは15分ごとに起動し、登録されたタイムゾーンと通知時刻が一致した購読に送信します。通知時刻は`00`・`15`・`30`・`45`分から選べます。
+通知には`SUBSCRIPTIONS`というKVバインディング、`PUSH_MUTATION_RATE_LIMITER`というRate Limiting binding、`VAPID_PUBLIC_KEY`、Secretの`VAPID_PRIVATE_KEY`、`VAPID_SUBJECT`が必要です。公開鍵・KV ID・Rate Limiting設定は`wrangler.jsonc`に設定済みで、秘密鍵はCloudflare側にだけ保存します。Cronは15分ごとに起動し、登録されたタイムゾーンと通知時刻が一致した購読に送信します。通知時刻は`00`・`15`・`30`・`45`分から選べます。
 
 Workers Logsは`wrangler.jsonc`で有効化済みです。配信を調べる際はCloudflareの**Workers & Pages → deadlineapp → Observability**でCron実行とエラーを確認できます。通知のテスト送信はアプリの設定画面から行えます。
+
+通知APIのレート制限、KV・Cron上限、デプロイ後の確認項目は[Cloudflare通知API セキュリティチェックリスト](docs/security/cloudflare-checklist.md)を参照してください。
 
 ## Google検索への掲載
 

@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { getMaximumDeadline, MAX_DEADLINE_YEARS } from '../data/appStorage'
 import type { Goal, ListKind } from '../data/appStorage'
 import { CloseIcon } from './Icons'
 
@@ -30,6 +31,7 @@ export function EditSheet({
   errorMessage,
 }: EditSheetProps) {
   const isGoal = mode === 'goal'
+  const maximumDeadline = getMaximumDeadline(todayKey)
 
   return (
     <div className="sheet-layer" role="presentation" onMouseDown={onClose}>
@@ -51,7 +53,8 @@ export function EditSheet({
             </label>
             <label>
               <span>期限</span>
-              <input type="date" value={goalDraft.deadline} min={todayKey} onChange={(event) => onGoalDraftChange({ ...goalDraft, deadline: event.target.value })} />
+              <input type="date" value={goalDraft.deadline} min={todayKey} max={maximumDeadline} onChange={(event) => onGoalDraftChange({ ...goalDraft, deadline: event.target.value })} />
+              <small>期限は今日から{MAX_DEADLINE_YEARS}年以内で設定できます。</small>
             </label>
             {errorMessage && <p className="sheet-form-error" role="alert">{errorMessage}</p>}
             <button className="primary-button" type="submit">保存する</button>

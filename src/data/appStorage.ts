@@ -20,6 +20,7 @@ export type ListItem = {
 export type ListKind = 'todo' | 'routine'
 
 const DAY_IN_MILLISECONDS = 1000 * 60 * 60 * 24
+export const MAX_DEADLINE_YEARS = 5
 
 const STORAGE_KEYS = {
   goal: 'deadline-goal',
@@ -68,6 +69,17 @@ export function toDateInputValue(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+export function getMaximumDeadline(todayKey: string) {
+  const maximum = new Date(`${todayKey}T00:00:00`)
+  if (Number.isNaN(maximum.getTime())) return todayKey
+  maximum.setFullYear(maximum.getFullYear() + MAX_DEADLINE_YEARS)
+  return toDateInputValue(maximum)
+}
+
+export function isDeadlineWithinRange(deadline: string, todayKey: string) {
+  return deadline >= todayKey && deadline <= getMaximumDeadline(todayKey)
 }
 
 function getDefaultGoal(): Goal {
