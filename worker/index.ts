@@ -6,6 +6,7 @@ import {
 type Env = {
   ASSETS: Fetcher
   SUBSCRIPTIONS?: KVNamespace
+  PUSH_MUTATION_RATE_LIMITER?: RateLimit
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string
   VAPID_SUBJECT?: string
@@ -36,22 +37,28 @@ const SUBSCRIPTION_PREFIX = 'subscription:'
 const FIFTEEN_MINUTE_TIME = /^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/
 const DATE_VALUE = /^(\d{4})-(\d{2})-(\d{2})$/
 const MAX_GOAL_TITLE_LENGTH = 80
+const MAX_DEADLINE_YEARS = 5
+const MAX_REQUEST_BODY_BYTES = 16_384
+const MAX_SCHEDULED_KEYS_PER_RUN = 5_000
+const MAX_SCHEDULED_ACTIONS_PER_RUN = 1_000
+const RATE_LIMIT_RETRY_SECONDS = 60
 const RESPONSE_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
   'cache-control': 'no-store',
 }
 
-function json(data: unknown, status = 200) {
-  return Response.json(data, { status, headers: RESPONSE_HEADERS })
+function json(data: unknown, status = 200, headers: HeadersInit = {}) {
+  return Response.json(data, { status, headers: { ...RESPONSE_HEADERS, ...headers } })
 }
 
 function isConfigured(env: Env) {
-  return Boolean(env.SUBSCRIPTIONS && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY)
+  return Boolean(env.SUBSCRIPTIONS && env.PUSH_MUTATION_RATE_LIMITER && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY)
 }
 
 function getMissingConfiguration(env: Env) {
   const missing: string[] = []
   if (!env.SUBSCRIPTIONS) missing.push('SUBSCRIPTIONS')
+  if (!env.PUSH_MUTATION_RATE_LIMITER) missing.push('PUSH_MUTATION_RATE_LIMITER')
   if (!env.VAPID_PUBLIC_KEY) missing.push('VAPID_PUBLIC_KEY')
   if (!env.VAPID_PRIVATE_KEY) missing.push('VAPID_PRIVATE_KEY')
   return missing
@@ -71,6 +78,14 @@ function isValidDate(value: unknown): value is string {
   const day = Number(match[3])
   const date = new Date(Date.UTC(year, month - 1, day))
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+}
+
+function isAllowedDeadline(value: unknown): value is string {
+  if (!isValidDate(value)) return false
+  const maximum = new Date()
+  maximum.setUTCHours(23, 59, 59, 999)
+  maximum.setUTCFullYear(maximum.getUTCFullYear() + MAX_DEADLINE_YEARS)
+  return Date.parse(`${value}T00:00:00Z`) <= maximum.getTime()
 }
 
 function isValidTimeZone(value: unknown): value is string {
@@ -95,7 +110,7 @@ function parseStoredSubscription(value: unknown): StoredSubscription | null {
   if (!value || typeof value !== 'object') return null
   const input = value as Partial<StoredSubscription>
   const title = input.goal?.title?.trim()
-  if (!title || title.length > MAX_GOAL_TITLE_LENGTH || !isValidDate(input.goal?.deadline)) return null
+  if (!title || title.length > MAX_GOAL_TITLE_LENGTH || !isAllowedDeadline(input.goal?.deadline)) return null
   if (!isPushSubscription(input.subscription)) return null
   if (typeof input.notificationTime !== 'string' || !FIFTEEN_MINUTE_TIME.test(input.notificationTime)) return null
   if (!isValidTimeZone(input.timeZone)) return null
@@ -109,21 +124,85 @@ function parseStoredSubscription(value: unknown): StoredSubscription | null {
   }
 }
 
+async function sha256(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 async function subscriptionKey(endpoint: string) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint))
-  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-  return `${SUBSCRIPTION_PREFIX}${hash}`
+  return `${SUBSCRIPTION_PREFIX}${await sha256(endpoint)}`
+}
+
+async function rateLimitPushMutation(request: Request, env: Env) {
+  if (!env.PUSH_MUTATION_RATE_LIMITER) {
+    return json({ error: '通知サーバーの保護設定が完了していません。' }, 503)
+  }
+
+  try {
+    const clientAddress = request.headers.get('CF-Connecting-IP')?.trim() || 'unknown-client'
+    const { success } = await env.PUSH_MUTATION_RATE_LIMITER.limit({
+      key: `push-mutation:${await sha256(clientAddress)}`,
+    })
+    if (success) return null
+    return json(
+      { error: '通知設定の操作が続いています。1分ほど待ってから再度お試しください。' },
+      429,
+      { 'retry-after': String(RATE_LIMIT_RETRY_SECONDS) },
+    )
+  } catch (error) {
+    console.error('Push mutation rate limiter failed', error)
+    return json({ error: '通知サーバーの保護機能を確認できませんでした。' }, 503)
+  }
 }
 
 async function readJson(request: Request) {
-  const length = Number(request.headers.get('content-length') ?? '0')
-  if (length > 16_384) throw new Error('request-too-large')
-  return request.json() as Promise<unknown>
+  const declaredLength = request.headers.get('content-length')
+  if (declaredLength !== null) {
+    const parsedLength = Number(declaredLength)
+    if (Number.isFinite(parsedLength) && parsedLength > MAX_REQUEST_BODY_BYTES) {
+      throw new Error('request-too-large')
+    }
+  }
+
+  if (!request.body) throw new Error('invalid-json')
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let receivedBytes = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      receivedBytes += value.byteLength
+      if (receivedBytes > MAX_REQUEST_BODY_BYTES) {
+        await reader.cancel()
+        throw new Error('request-too-large')
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const body = new Uint8Array(receivedBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  try {
+    return JSON.parse(new TextDecoder().decode(body)) as unknown
+  } catch {
+    throw new Error('invalid-json')
+  }
 }
 
 async function registerSubscription(request: Request, env: Env) {
   if (!isSameOrigin(request)) return json({ error: '許可されていない送信元です。' }, 403)
   if (!isConfigured(env) || !env.SUBSCRIPTIONS) return json({ error: '通知サーバーの準備が完了していません。' }, 503)
+  const rateLimited = await rateLimitPushMutation(request, env)
+  if (rateLimited) return rateLimited
 
   try {
     const input = await readJson(request)
@@ -159,7 +238,8 @@ async function registerSubscription(request: Request, env: Env) {
           tag: `deadline-test-${Date.now()}`,
         }, env, 'high')
         if (!response.ok) {
-          console.error(`Test push rejected: ${response.status} ${await response.text()}`)
+          await response.body?.cancel()
+          console.error(`Test push rejected: ${response.status}`)
           if (response.status === 404 || response.status === 410) {
             await env.SUBSCRIPTIONS.delete(key)
             return json({ error: '通知先の登録が期限切れです。もう一度通知をオンにしてください。' }, 410)
@@ -180,6 +260,9 @@ async function registerSubscription(request: Request, env: Env) {
     if (error instanceof Error && error.message === 'request-too-large') {
       return json({ error: '通知設定のデータが大きすぎます。' }, 413)
     }
+    if (error instanceof Error && error.message === 'invalid-json') {
+      return json({ error: '通知設定のデータが正しくありません。' }, 400)
+    }
     console.error('Failed to register push subscription', error)
     return json({ error: '通知設定を保存できませんでした。' }, 500)
   }
@@ -187,7 +270,11 @@ async function registerSubscription(request: Request, env: Env) {
 
 async function deleteSubscription(request: Request, env: Env) {
   if (!isSameOrigin(request)) return json({ error: '許可されていない送信元です。' }, 403)
-  if (!env.SUBSCRIPTIONS) return json({ success: true })
+  if (!env.SUBSCRIPTIONS || !env.PUSH_MUTATION_RATE_LIMITER) {
+    return json({ error: '通知サーバーの準備が完了していません。' }, 503)
+  }
+  const rateLimited = await rateLimitPushMutation(request, env)
+  if (rateLimited) return rateLimited
 
   try {
     const body = await readJson(request) as { endpoint?: unknown }
@@ -197,6 +284,12 @@ async function deleteSubscription(request: Request, env: Env) {
     await env.SUBSCRIPTIONS.delete(await subscriptionKey(body.endpoint))
     return json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message === 'request-too-large') {
+      return json({ error: '通知設定のデータが大きすぎます。' }, 413)
+    }
+    if (error instanceof Error && error.message === 'invalid-json') {
+      return json({ error: '通知情報が正しくありません。' }, 400)
+    }
     console.error('Failed to delete push subscription', error)
     return json({ error: '通知設定を削除できませんでした。' }, 500)
   }
@@ -293,9 +386,11 @@ async function sendNotification(key: string, today: string, env: Env) {
       tag: `deadline-${today}`,
     }, env, 'normal')
     if (response.status === 404 || response.status === 410) {
+      await response.body?.cancel()
       await env.SUBSCRIPTIONS.delete(key)
     } else if (!response.ok) {
-      console.error(`Push delivery failed: ${response.status} ${await response.text()}`)
+      await response.body?.cancel()
+      console.error(`Push delivery failed: ${response.status}`)
     }
   } catch (error) {
     console.error('Push delivery failed', error)
@@ -309,23 +404,37 @@ async function sendScheduledNotifications(timestamp: number, env: Env) {
   }
 
   let cursor: string | undefined
+  let scannedKeys = 0
+  let scheduledActions = 0
+  let reachedRunLimit = false
   do {
+    const remainingKeys = MAX_SCHEDULED_KEYS_PER_RUN - scannedKeys
+    if (remainingKeys <= 0) break
     const page = await env.SUBSCRIPTIONS.list<SubscriptionMetadata>({
       prefix: SUBSCRIPTION_PREFIX,
-      limit: 1000,
+      limit: Math.min(1000, remainingKeys),
       cursor,
     })
+    scannedKeys += page.keys.length
 
     const matching: ScheduledAction[] = []
     for (const key of page.keys) {
       if (!key.metadata || !isValidTimeZone(key.metadata.timeZone)) continue
       const current = getZonedDateTime(timestamp, key.metadata.timeZone)
+      let action: ScheduledAction | null = null
       if (current.date > key.metadata.deadline) {
-        matching.push({ type: 'delete', key: key.name })
-        continue
+        action = { type: 'delete', key: key.name }
+      } else if (current.time === key.metadata.notificationTime) {
+        action = { type: 'send', key: key.name, today: current.date }
       }
-      if (current.time === key.metadata.notificationTime) {
-        matching.push({ type: 'send', key: key.name, today: current.date })
+
+      if (action) {
+        if (scheduledActions >= MAX_SCHEDULED_ACTIONS_PER_RUN) {
+          reachedRunLimit = true
+          break
+        }
+        matching.push(action)
+        scheduledActions += 1
       }
     }
 
@@ -338,8 +447,18 @@ async function sendScheduledNotifications(timestamp: number, env: Env) {
       )))
     }
 
+    if (reachedRunLimit) break
     cursor = page.list_complete ? undefined : page.cursor
   } while (cursor)
+
+  if (reachedRunLimit || cursor) {
+    console.warn('Scheduled notification run reached its safety limit', {
+      scannedKeys,
+      scheduledActions,
+      maxScannedKeys: MAX_SCHEDULED_KEYS_PER_RUN,
+      maxScheduledActions: MAX_SCHEDULED_ACTIONS_PER_RUN,
+    })
+  }
 }
 
 export default {

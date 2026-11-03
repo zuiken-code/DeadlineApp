@@ -16,6 +16,7 @@ import type { SheetMode } from './components/EditSheet'
 import {
   formatDeadline,
   getDaysLeft,
+  isDeadlineWithinRange,
   getTodoProgressPercentage,
   hasSeenGuidedTutorial,
   loadGoal,
@@ -244,6 +245,10 @@ function App() {
   const updateGoal = (event: FormEvent) => {
     event.preventDefault()
     if (!goalDraft.title.trim() || !goalDraft.deadline) return
+    if (!isDeadlineWithinRange(goalDraft.deadline, todayKey)) {
+      setStorageMessage('期限は今日から5年以内で設定してください。')
+      return
+    }
     const next = { ...goalDraft, title: goalDraft.title.trim() }
     const hadGoal = Boolean(goal.title && goal.deadline)
     const titleChanged = goal.title !== next.title
